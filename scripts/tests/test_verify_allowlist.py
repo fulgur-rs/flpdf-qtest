@@ -40,7 +40,7 @@ class ParseLogTest(unittest.TestCase):
             arg-parsing  2 (required argument with choices)                ... PASSED
             """
         )
-        results = verify_allowlist.parse_log(log)
+        results, _total = verify_allowlist.parse_log(log)
         self.assertEqual(len(results), 2)
         self.assertTrue(all(r.passed for r in results))
         self.assertEqual(results[0].test, "arg-parsing")
@@ -56,7 +56,7 @@ class ParseLogTest(unittest.TestCase):
             deterministic-id test 2 (compare files) FAILED
             """
         )
-        results = verify_allowlist.parse_log(log)
+        results, _total = verify_allowlist.parse_log(log)
         self.assertEqual(len(results), 2)
         self.assertTrue(all(not r.passed for r in results))
         self.assertEqual(results[0].subtest, "deterministic ID: linearize/ostream=nn")
@@ -70,9 +70,32 @@ class ParseLogTest(unittest.TestCase):
             arg-parsing  2 (required argument with choices)     ... PASSED
             """
         )
-        results = verify_allowlist.parse_log(log)
+        results, _total = verify_allowlist.parse_log(log)
         self.assertEqual(len(results), 3)
         self.assertEqual([r.passed for r in results], [True, False, True])
+
+    def test_parses_total_summary(self) -> None:
+        log = _tmp(
+            """
+            arg-parsing  1 (a)                  ... PASSED
+            arg-parsing  2 (b)                  ... PASSED
+
+            TESTS COMPLETE.  Summary:
+            Total tests: 2
+            Passes: 2
+            Failures: 0
+            """
+        )
+        results, total = verify_allowlist.parse_log(log)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(total, 2)
+
+    def test_total_summary_missing_returns_none(self) -> None:
+        log = _tmp("""
+            arg-parsing  1 (a)                  ... PASSED
+            """)
+        _results, total = verify_allowlist.parse_log(log)
+        self.assertIsNone(total)
 
     def test_dedupes_repeated_lines(self) -> None:
         # qtest-driver can dump the same subtest header more than once when
@@ -84,7 +107,7 @@ class ParseLogTest(unittest.TestCase):
             deterministic-id test 1 (compare files) FAILED
             """
         )
-        results = verify_allowlist.parse_log(log)
+        results, _total = verify_allowlist.parse_log(log)
         self.assertEqual(len(results), 1)
 
 

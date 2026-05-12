@@ -1,4 +1,5 @@
 # qtest run artifacts (uploaded as CI artifacts, not committed)
+harness.log
 qtest.log
 qtest-summary.md
 qtest-results.xml

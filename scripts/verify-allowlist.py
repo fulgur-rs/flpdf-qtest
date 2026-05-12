@@ -47,6 +47,13 @@ _RESULT_RE_FAIL = re.compile(
     r"(?P<result>FAILED)\s*$"
 )
 
+# qtest-driver appends a "Total tests: N" summary line. We cross-check it
+# against the count of subtest result lines we parsed, so a regression that
+# silently drops result lines (e.g. log fd getting stolen by qtest-driver's
+# own testlog write) surfaces as an explicit error rather than as an empty
+# allowlist-candidates section.
+_SUMMARY_TOTAL_RE = re.compile(r"^Total tests:\s*(?P<n>\d+)\s*$")
+
 
 @dataclass(frozen=True)
 class Result:
@@ -55,12 +62,24 @@ class Result:
     passed: bool
 
 
-def parse_log(path: Path) -> list[Result]:
+def parse_log(path: Path) -> tuple[list[Result], int | None]:
+    """Parse a qtest-driver log.
+
+    Returns:
+        (results, total_tests_summary). `total_tests_summary` is the
+        qtest-driver "Total tests: N" line if present, else None. Callers
+        should compare it against `len(results)` to detect parsing drift.
+    """
     out: list[Result] = []
     seen: set[tuple[str, str, str]] = set()
+    total_from_summary: int | None = None
     with path.open("r", encoding="utf-8", errors="replace") as fh:
         for line in fh:
             stripped = line.rstrip("\n")
+            m_total = _SUMMARY_TOTAL_RE.match(stripped)
+            if m_total:
+                total_from_summary = int(m_total["n"])
+                continue
             m = _RESULT_RE_PASS.match(stripped) or _RESULT_RE_FAIL.match(stripped)
             if not m:
                 continue
@@ -77,7 +96,7 @@ def parse_log(path: Path) -> list[Result]:
                     passed=(m["result"] == "PASSED"),
                 )
             )
-    return out
+    return out, total_from_summary
 
 
 @dataclass(frozen=True)
@@ -205,13 +224,28 @@ def main(argv: list[str] | None = None) -> int:
         print(f"verify-allowlist: allowlist not found: {args.allowlist}", file=sys.stderr)
         return 2
 
-    results = parse_log(args.log)
+    results, total_from_summary = parse_log(args.log)
     allowlist = parse_allowlist(args.allowlist)
     if not results:
         print("verify-allowlist: no subtest results parsed from log", file=sys.stderr)
         return 1
 
+    drift_msg = None
+    if total_from_summary is not None and total_from_summary != len(results):
+        # Parser missed lines OR captured extras. This guards against the
+        # "tee writes to an orphaned inode" class of bug — see harness.log
+        # rationale in scripts/run.sh — and any future regex regression.
+        drift_msg = (
+            f"verify-allowlist: parsed {len(results)} subtest results "
+            f"but qtest summary reported {total_from_summary}"
+        )
+        print(drift_msg, file=sys.stderr)
+
     exit_code, summary = judge(results, allowlist)
+    if drift_msg:
+        # Make the drift visible in the summary artifact too.
+        summary = f"> ⚠️ {drift_msg}\n\n{summary}"
+        exit_code = max(exit_code, 1)
     sys.stdout.write(summary)
     if args.summary:
         args.summary.write_text(summary, encoding="utf-8")
