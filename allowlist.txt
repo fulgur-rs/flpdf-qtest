@@ -21,5 +21,12 @@
 # it pass. The allowlist is the public record of qpdf-CLI compatibility
 # claims, not a wishlist.
 
-# (No entries yet — Phase 1 deliberately leaves this empty so CI can prove
-#  the harness works before any compatibility surface exists.)
+# First real entry: linearize-pass1's subtest 1 ("linearize pass 1 file")
+# asserts that `qpdf --linearize --static-id --compress-streams=n
+# --linearize-pass1=b.pdf in.pdf a.pdf` exits 0 with empty stdout/stderr.
+# Subtests 2 and 3 of the same .test compare bytes against qpdf's golden
+# minimal-linearized.pdf / minimal-linearize-pass1.pdf and remain
+# informational failures pending writer-side byte alignment.
+# Implementation: flpdf-cli top-level qpdf-style flat flags (flpdf-d8a,
+# merged as fulgur-rs/flpdf#69).
+linearize-pass1:linearize pass 1 file
