@@ -7,3 +7,7 @@ TEST-*.xml
 # OS / editor scratch
 .DS_Store
 *.swp
+
+# Python
+__pycache__/
+*.pyc

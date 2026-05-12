@@ -60,6 +60,9 @@ jobs:
             cargo-${{ runner.os }}-${{ steps.flpdf_ref.outputs.ref }}-
             cargo-${{ runner.os }}-
 
+      - name: Verify-allowlist unit tests
+        run: python3 -m unittest scripts.tests.test_verify_allowlist
+
       - name: Build flpdf-cli
         working-directory: flpdf
         run: cargo build --release -p flpdf-cli
