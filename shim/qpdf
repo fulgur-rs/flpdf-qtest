@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#
+# shim/qpdf — placed on PATH ahead of any real qpdf so that .test files
+# invoking `qpdf ...` are routed to flpdf-cli.
+#
+# Required env:
+#   FLPDF_CLI_BIN  — absolute path to the flpdf-cli binary to delegate to.
+#
+# Optional env:
+#   FLPDF_QPDF_COMPAT      — when "1", forwarded as-is (flpdf-cli reads it to
+#                            enable qpdf-compatible CLI parsing).
+#   FLPDF_QTEST_NORMALIZE  — when set to a sed script path, stderr is filtered
+#                            through it to absorb "flpdf:" → "qpdf:" prefix
+#                            differences.
+
+set -u
+
+if [[ -z "${FLPDF_CLI_BIN:-}" ]]; then
+    echo "shim/qpdf: FLPDF_CLI_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_CLI_BIN}" ]]; then
+    echo "shim/qpdf: FLPDF_CLI_BIN=${FLPDF_CLI_BIN} is not executable" >&2
+    exit 127
+fi
+
+if [[ -n "${FLPDF_QTEST_NORMALIZE:-}" && -r "${FLPDF_QTEST_NORMALIZE}" ]]; then
+    exec "${FLPDF_CLI_BIN}" "$@" 2> >(sed -f "${FLPDF_QTEST_NORMALIZE}" 1>&2)
+fi
+
+exec "${FLPDF_CLI_BIN}" "$@"

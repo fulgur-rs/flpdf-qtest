@@ -1,0 +1,9 @@
+# qtest run artifacts (uploaded as CI artifacts, not committed)
+qtest.log
+qtest-summary.md
+qtest-results.xml
+TEST-*.xml
+
+# OS / editor scratch
+.DS_Store
+*.swp
