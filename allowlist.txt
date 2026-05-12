@@ -1,0 +1,25 @@
+# flpdf-qtest allowlist
+#
+# Each non-empty, non-comment line declares an acceptance-test entry that
+# MUST pass on CI. Format:
+#
+#   <test-stem>[:<subtest-name>]
+#
+# Examples:
+#   deterministic-id                    # every subtest in deterministic-id.test must pass
+#   arg-parsing:required argument       # only this single subtest is required to pass
+#
+# Semantics enforced by scripts/verify-allowlist.py:
+#
+#   allowlist PASS    → expected, CI green
+#   allowlist FAIL    → REGRESSION, CI red
+#   allowlist not run → CI red (typo, deleted upstream test, etc.)
+#   non-allowlist PASS → WARN: allowlist-candidate (surfaced in qtest-summary.md)
+#   non-allowlist FAIL → informational, CI green
+#
+# Policy: only add an entry AFTER the implementation in flpdf actually makes
+# it pass. The allowlist is the public record of qpdf-CLI compatibility
+# claims, not a wishlist.
+
+# (No entries yet — Phase 1 deliberately leaves this empty so CI can prove
+#  the harness works before any compatibility surface exists.)

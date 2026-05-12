@@ -1,0 +1,80 @@
+name: qtest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      flpdf_ref:
+        description: "flpdf branch / tag / SHA (default: main)"
+        required: false
+        default: main
+  schedule:
+    # Weekly regression sweep against flpdf main HEAD.
+    - cron: "0 18 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qtest-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout flpdf-qtest
+        uses: actions/checkout@v4
+
+      - name: Resolve flpdf ref
+        id: flpdf_ref
+        env:
+          INPUT_REF: ${{ inputs.flpdf_ref }}
+        run: |
+          ref="${INPUT_REF:-main}"
+          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout flpdf
+        uses: actions/checkout@v4
+        with:
+          repository: fulgur-rs/flpdf
+          ref: ${{ steps.flpdf_ref.outputs.ref }}
+          path: flpdf
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            flpdf/target
+          key: cargo-${{ runner.os }}-${{ steps.flpdf_ref.outputs.ref }}-${{ hashFiles('flpdf/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ steps.flpdf_ref.outputs.ref }}-
+            cargo-${{ runner.os }}-
+
+      - name: Build flpdf-cli
+        working-directory: flpdf
+        run: cargo build --release -p flpdf-cli
+
+      - name: Run qtest acceptance suite
+        env:
+          FLPDF_CLI_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf
+        run: ./scripts/run.sh
+
+      - name: Upload qtest artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qtest-results
+          path: |
+            qtest.log
+            qtest-summary.md
+          if-no-files-found: ignore

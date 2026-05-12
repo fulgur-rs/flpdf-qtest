@@ -3,8 +3,9 @@
 Acceptance-test harness for [flpdf](https://github.com/fulgur-rs/flpdf) built
 on top of the upstream [qpdf](https://github.com/qpdf/qpdf) `qtest` suite.
 
-Status: **Phase 0** — repository bootstrap. The vendored qtest tree is in
-place but the runner, shim, and CI are not yet wired up.
+Status: **Phase 1** — the harness boots end-to-end (shim, runner, allowlist
+verifier, CI) with an empty `allowlist.txt`. No subtests are required to
+pass yet; informational failures are logged but do not fail CI.
 
 ## What this repository does
 
@@ -40,8 +41,36 @@ flpdf-qtest/
 └── NOTICE.md                  # vendored licenses and attributions
 ```
 
-Future phases will add `shim/`, `allowlist.txt`, `scripts/run.sh`,
-`scripts/verify-allowlist.py`, `normalize/`, and `.github/workflows/ci.yml`.
+```
+flpdf-qtest/
+├── shim/qpdf                  # PATH shim that delegates to flpdf-cli
+├── scripts/run.sh             # build + run qtest + verify allowlist
+├── scripts/verify-allowlist.py
+├── allowlist.txt              # tests required to pass (empty at Phase 1)
+├── normalize/stderr-rules.sed # stderr prefix / wording normalization
+└── .github/workflows/ci.yml   # push / PR / weekly / workflow_dispatch
+```
+
+## Running locally
+
+```bash
+# Build flpdf-cli first (binary is named `flpdf`).
+cd /path/to/flpdf
+cargo build --release -p flpdf-cli
+
+# Then drive qtest.
+cd /path/to/flpdf-qtest
+FLPDF_CLI_BIN=/path/to/flpdf/target/release/flpdf ./scripts/run.sh
+```
+
+Useful env knobs:
+
+- `QTEST_TESTS="arg-parsing deterministic-id"` — restrict to specific
+  `.test` stems instead of "everything mentioned in allowlist.txt".
+- `QTEST_FULL=1` — run every `*.test` in `vendor/qpdf-qtest/`. Most will
+  fail until flpdf grows qpdf-CLI compatibility; useful for surveying.
+- `FLPDF_DIR=/path/to/flpdf` — if `FLPDF_CLI_BIN` is unset, build
+  flpdf-cli in that checkout.
 
 ## Re-vendoring
 
