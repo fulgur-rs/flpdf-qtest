@@ -23,19 +23,28 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-# Example matched lines:
-#   "arg-parsing  1 (required argument)                             ... PASSED"
-#   "arg-parsing 25 (mixed enc args (--user-password=u o))           ... FAILED"
+# qtest-driver emits two distinct subtest-result line shapes:
 #
-# We anchor at start-of-line and require the literal " ... PASSED" or
-# " ... FAILED" suffix to avoid matching incidental lines. The subtest name
-# uses a greedy capture and we strip trailing whitespace afterwards.
-_RESULT_RE = re.compile(
+#   PASS (columnar, padded with dots):
+#     "arg-parsing  1 (required argument)                             ... PASSED"
+#
+#   FAIL (testlog dump header, no dots, literal " test " infix):
+#     "deterministic-id test 1 (deterministic ID: ...) FAILED"
+#
+# Both are captured here. The subtest description uses a greedy capture
+# constrained by requiring the trailing PASSED/FAILED suffix.
+_RESULT_RE_PASS = re.compile(
     r"^(?P<test>[A-Za-z0-9][A-Za-z0-9_+.-]*)\s+"
     r"(?P<num>\d+)\s+"
     r"\((?P<name>.+)\)\s+"
     r"\.\.\.\s+"
     r"(?P<result>PASSED|FAILED)\s*$"
+)
+_RESULT_RE_FAIL = re.compile(
+    r"^(?P<test>[A-Za-z0-9][A-Za-z0-9_+.-]*)\s+test\s+"
+    r"(?P<num>\d+)\s+"
+    r"\((?P<name>.+)\)\s+"
+    r"(?P<result>FAILED)\s*$"
 )
 
 
@@ -48,11 +57,19 @@ class Result:
 
 def parse_log(path: Path) -> list[Result]:
     out: list[Result] = []
+    seen: set[tuple[str, str, str]] = set()
     with path.open("r", encoding="utf-8", errors="replace") as fh:
         for line in fh:
-            m = _RESULT_RE.match(line.rstrip("\n"))
+            stripped = line.rstrip("\n")
+            m = _RESULT_RE_PASS.match(stripped) or _RESULT_RE_FAIL.match(stripped)
             if not m:
                 continue
+            key = (m["test"], m["num"], m["name"].strip())
+            # qtest-driver emits per-subtest details to both a testlog dump
+            # and a columnar status line; dedupe on (test, num, name).
+            if key in seen:
+                continue
+            seen.add(key)
             out.append(
                 Result(
                     test=m["test"],
