@@ -19,7 +19,14 @@
 #   QTEST_FULL     When "1", run every *.test in vendor/qpdf-qtest/.
 #
 # Outputs:
-#   qtest.log           — full qtest-driver stdout+stderr
+#   harness.log         — full qtest-driver stdout+stderr captured by tee
+#   qtest.log           — qtest-driver's own testlog (failure dumps).
+#                         qtest-driver writes this in cwd unconditionally
+#                         (`my $testlogfile = 'qtest.log';` upstream),
+#                         which is why we MUST NOT name our tee target
+#                         qtest.log — qtest-driver `unlink`s it, breaking
+#                         the tee fd and silently losing our columnar
+#                         status lines.
 #   qtest-summary.md    — verify-allowlist.py judgment
 
 set -euo pipefail
@@ -80,7 +87,7 @@ fi
 
 # --- run qtest-driver --------------------------------------------------------
 
-log="${repo_root}/qtest.log"
+log="${repo_root}/harness.log"
 : > "${log}"
 
 if [[ ${#stems[@]} -eq 0 ]]; then

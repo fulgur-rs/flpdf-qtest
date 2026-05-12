@@ -78,6 +78,7 @@ jobs:
         with:
           name: qtest-results
           path: |
+            harness.log
             qtest.log
             qtest-summary.md
           if-no-files-found: ignore
