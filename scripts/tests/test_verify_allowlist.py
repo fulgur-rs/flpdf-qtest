@@ -74,6 +74,23 @@ class ParseLogTest(unittest.TestCase):
         self.assertEqual(len(results), 3)
         self.assertEqual([r.passed for r in results], [True, False, True])
 
+    def test_columnar_expected_failure_format(self) -> None:
+        log = _tmp(
+            """
+            split-pages 14 (check output (01-10))                          ... FAILED (exp)
+            split-pages 15 (check output (11-20))                          ... FAILED (exp)
+
+            TESTS COMPLETE.  Summary:
+            Total tests: 2
+            Expected Failures: 2
+            """
+        )
+        results, total = verify_allowlist.parse_log(log)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(total, 2)
+        self.assertTrue(all(not r.passed for r in results))
+        self.assertEqual(results[0].subtest, "check output (01-10)")
+
     def test_parses_total_summary(self) -> None:
         log = _tmp(
             """
