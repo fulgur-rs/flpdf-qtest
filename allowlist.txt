@@ -30,3 +30,17 @@
 # Implementation: flpdf-cli top-level qpdf-style flat flags (flpdf-d8a,
 # merged as fulgur-rs/flpdf#69).
 linearize-pass1:linearize pass 1 file
+
+# Minimal promote batch from latest flpdf main survey (2026-05-18).
+# These are single, named CLI behavior subtests with no duplicated subtest
+# names in their suite-level context. Deliberately excludes repeated names
+# such as encryption:check against base and broader JSON/output-comparison
+# groups until the allowlist can address subtest identity more precisely.
+copy-annotations:not keeping any fields
+copy-annotations:page splitting with fields
+merge-and-split:force full page duplication
+merge-and-split:merge with . and implicit ranges
+overwrite-self:output is not really output for split
+rotate-pages:rotate all pages
+split-pages:split pages %d at beginning
+split-pages:split pages pdf extension
