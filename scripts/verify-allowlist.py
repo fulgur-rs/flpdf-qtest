@@ -38,7 +38,7 @@ _RESULT_RE_PASS = re.compile(
     r"(?P<num>\d+)\s+"
     r"\((?P<name>.+)\)\s+"
     r"\.\.\.\s+"
-    r"(?P<result>PASSED|FAILED)\s*$"
+    r"(?P<result>PASSED|FAILED)(?:\s+\(exp\))?\s*$"
 )
 _RESULT_RE_FAIL = re.compile(
     r"^(?P<test>[A-Za-z0-9][A-Za-z0-9_+.-]*)\s+test\s+"
