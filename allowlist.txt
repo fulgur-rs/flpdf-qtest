@@ -43,4 +43,15 @@ merge-and-split:merge with . and implicit ranges
 overwrite-self:output is not really output for split
 rotate-pages:rotate all pages
 split-pages:split pages %d at beginning
+
+# Promoted 2026-05-19 after flpdf-4x6 (top-level `--static-id` warning
+# suppressed to mirror qpdf). rotate-pages subtest 1 asserts
+# `qpdf --static-id to-rotate.pdf a.pdf --rotate=...` exits 0 with empty
+# stdout/stderr; it failed only on the spurious flpdf warning and now passes
+# (current main, 2/2 stable). Same shape as `rotate-pages:rotate all pages`
+# above; the byte-comparison subtest 2 ("check output") stays an
+# informational failure pending writer alignment. Name is unique in
+# rotate-pages.test, so the verifier's name-only match is unambiguous.
+# Follow-up: flpdf-9kl (epic flpdf-vrn).
+rotate-pages:page rotation
 split-pages:split pages pdf extension
