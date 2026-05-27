@@ -56,11 +56,21 @@ if [[ ! -x "${FLPDF_CLI_BIN}" ]]; then
 fi
 
 # --- prepare shim PATH -------------------------------------------------------
+#
+# Copy every executable in shim/ — not just qpdf — so any qpdf-side helper
+# a .test invokes (fix-qdf, zlib-flate, etc.) is intercepted. Hosts where
+# the qpdf apt package is installed ship /usr/bin/fix-qdf and
+# /usr/bin/zlib-flate, which would otherwise silently shadow the test and
+# produce spurious PASSes that don't reflect flpdf. The stubs in shim/
+# fail loudly, so survey numbers from local runs match CI.
 
 shim_bin="$(mktemp -d)"
 trap 'rm -rf "${shim_bin}"' EXIT
-cp "${repo_root}/shim/qpdf" "${shim_bin}/qpdf"
-chmod +x "${shim_bin}/qpdf"
+for shim in "${repo_root}"/shim/*; do
+    [[ -f "${shim}" && -x "${shim}" ]] || continue
+    name="$(basename "${shim}")"
+    cp "${shim}" "${shim_bin}/${name}"
+done
 
 export PATH="${shim_bin}:${PATH}"
 export FLPDF_QPDF_COMPAT=1
