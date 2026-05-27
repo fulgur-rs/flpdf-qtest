@@ -55,3 +55,20 @@ split-pages:split pages %d at beginning
 # Follow-up: flpdf-9kl (epic flpdf-vrn).
 rotate-pages:page rotation
 split-pages:split pages pdf extension
+
+# Minimal promote batch from full survey at flpdf 23e71d9 (2026-05-27).
+# All seven entries have been passing in survey since at least flpdf
+# 91080c7 (2026-05-19) — one week of stability across 120 commits — and
+# each name is unique within its .test file (verifier name-only match is
+# unambiguous). Same shape and policy as the 2026-05-18 minimal batch
+# above: single CLI-behavior subtests, no duplicated subtest names, no
+# golden-bytes comparisons. Sibling identity-* subtests in fix-qdf.test
+# share names (`identity fix-qdf 1/2` appear twice) and are deliberately
+# excluded pending subtest-identity support.
+fix-qdf:fix-qdf 1
+fix-qdf:fix-qdf 1 from pipe
+fix-qdf:fix-qdf 2
+fix-qdf:fix-qdf 2 from pipe
+fix-qdf:fix-qdf with big object stream
+json:check stream data (16, all)
+qpdf-json:json-output with file
