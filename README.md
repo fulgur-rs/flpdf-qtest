@@ -90,7 +90,7 @@ via `shim/`, `normalize/`, or `allowlist.txt` instead.
 
 `scripts/run.sh` copies every executable in `shim/` to the front of `PATH`,
 not just `qpdf`. This is deliberate: several `vendor/qpdf-qtest/*.test`
-files invoke qpdf-side helpers (`fix-qdf`, `zlib-flate`, ...) directly,
+files invoke qpdf-side helpers (`fix-qdf`, `zlib-flate`, etc.) directly,
 and on hosts where the `qpdf` apt package is installed those helpers live
 at `/usr/bin/fix-qdf` etc. Without shadowing them, those subtests would
 silently route to the host binaries and report PASS without ever calling

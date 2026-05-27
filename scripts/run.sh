@@ -67,9 +67,9 @@ fi
 shim_bin="$(mktemp -d)"
 trap 'rm -rf "${shim_bin}"' EXIT
 for shim in "${repo_root}"/shim/*; do
+    [[ -f "${shim}" && -x "${shim}" ]] || continue
     name="$(basename "${shim}")"
     cp "${shim}" "${shim_bin}/${name}"
-    chmod +x "${shim_bin}/${name}"
 done
 
 export PATH="${shim_bin}:${PATH}"

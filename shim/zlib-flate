@@ -13,8 +13,10 @@
 # real failure rather than a fake pass. See PR #8 for the related
 # fix-qdf incident.
 
-echo "flpdf-qtest: zlib-flate is not provided by flpdf (qpdf-side helper)." >&2
-echo "flpdf-qtest: the harness deliberately shadows host /usr/bin/zlib-flate" >&2
-echo "flpdf-qtest: to keep survey numbers honest. If you intentionally want" >&2
-echo "flpdf-qtest: this helper for a test, you must explicitly provide one." >&2
+cat >&2 <<'EOF'
+flpdf-qtest: zlib-flate is not provided by flpdf (qpdf-side helper).
+flpdf-qtest: the harness deliberately shadows host /usr/bin/zlib-flate
+flpdf-qtest: to keep survey numbers honest. If you intentionally want
+flpdf-qtest: this helper for a test, you must explicitly provide one.
+EOF
 exit 127
