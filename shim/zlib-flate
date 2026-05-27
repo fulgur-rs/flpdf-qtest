@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# shim/zlib-flate — shadow stub for the qpdf-side `zlib-flate` helper.
+#
+# Several `vendor/qpdf-qtest/*.test` files invoke `zlib-flate` directly
+# (zlib compress/decompress utility). flpdf does not provide it. Without
+# this shim, hosts where the qpdf apt package is installed (which ships
+# /usr/bin/zlib-flate) would silently route those invocations to the
+# real binary — producing spurious PASSes that do not reflect flpdf and
+# that disagree with CI.
+#
+# This stub fails loudly so the surrounding subtest is recorded as a
+# real failure rather than a fake pass. See PR #8 for the related
+# fix-qdf incident.
+
+echo "flpdf-qtest: zlib-flate is not provided by flpdf (qpdf-side helper)." >&2
+echo "flpdf-qtest: the harness deliberately shadows host /usr/bin/zlib-flate" >&2
+echo "flpdf-qtest: to keep survey numbers honest. If you intentionally want" >&2
+echo "flpdf-qtest: this helper for a test, you must explicitly provide one." >&2
+exit 127

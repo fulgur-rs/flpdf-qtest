@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# shim/fix-qdf — shadow stub for the qpdf-side `fix-qdf` helper binary.
+#
+# Some `vendor/qpdf-qtest/*.test` files invoke `fix-qdf` directly. flpdf
+# does not provide a fix-qdf equivalent. Without this shim, hosts where
+# the qpdf apt package is installed (which ships /usr/bin/fix-qdf) would
+# silently route those invocations to the real qpdf helper, producing
+# spurious PASSes that do not reflect flpdf at all — and that disagree
+# with CI (which has no qpdf package).
+#
+# This stub fails loudly so the surrounding subtest is recorded as a
+# real failure rather than a fake pass. See PR #8 (commit 8219223) for
+# the incident that prompted this.
+
+echo "flpdf-qtest: fix-qdf is not provided by flpdf (qpdf-side helper)." >&2
+echo "flpdf-qtest: the harness deliberately shadows host /usr/bin/fix-qdf" >&2
+echo "flpdf-qtest: to keep survey numbers honest. If you intentionally want" >&2
+echo "flpdf-qtest: this helper for a test, you must explicitly provide one." >&2
+exit 127

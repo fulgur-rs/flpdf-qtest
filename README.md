@@ -44,6 +44,8 @@ flpdf-qtest/
 ```
 flpdf-qtest/
 ├── shim/qpdf                  # PATH shim that delegates to flpdf-cli
+├── shim/fix-qdf               # PATH stub: fail-loud shadow for host helpers
+├── shim/zlib-flate            #   (see "PATH shadowing" below)
 ├── scripts/run.sh             # build + run qtest + verify allowlist
 ├── scripts/verify-allowlist.py
 ├── allowlist.txt              # tests required to pass (empty at Phase 1)
@@ -83,6 +85,23 @@ The script downloads the qpdf source tarball for the requested tag, replaces
 the contents of `vendor/qtest/` and `vendor/qpdf-qtest/`, and records the tag
 in `vendor/UPSTREAM_TAG`. Do not patch `vendor/` locally — absorb divergence
 via `shim/`, `normalize/`, or `allowlist.txt` instead.
+
+## PATH shadowing
+
+`scripts/run.sh` copies every executable in `shim/` to the front of `PATH`,
+not just `qpdf`. This is deliberate: several `vendor/qpdf-qtest/*.test`
+files invoke qpdf-side helpers (`fix-qdf`, `zlib-flate`, ...) directly,
+and on hosts where the `qpdf` apt package is installed those helpers live
+at `/usr/bin/fix-qdf` etc. Without shadowing them, those subtests would
+silently route to the host binaries and report PASS without ever calling
+flpdf — disagreeing with CI (which has no qpdf package) and inflating
+local survey numbers.
+
+The stubs in `shim/` for these helpers fail loudly (`exit 127` with a
+descriptive stderr message), so any subtest that depended on them is
+recorded as a real failure. If flpdf grows an equivalent of one of these
+helpers in the future, replace the stub with a delegating shim like
+`shim/qpdf`.
 
 ## License
 
