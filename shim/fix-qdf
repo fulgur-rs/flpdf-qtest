@@ -34,12 +34,19 @@ if [[ ! -x "${FLPDF_CLI_BIN}" ]]; then
 fi
 
 tmp_in=""
-tmp_out="$(mktemp)"
-cleanup() { rm -f "${tmp_in}" "${tmp_out}"; }
+tmp_out="$(mktemp)" || exit 127
+cleanup() {
+    rm -f "${tmp_out}"
+    # tmp_in is empty when the input came in as a path argument; guard the
+    # rm so we don't trip BSD/macOS coreutils' "rm: : No such file or
+    # directory" warning, which would otherwise pollute the stderr that
+    # qtest compares against the expected fixture.
+    [[ -n "${tmp_in}" ]] && rm -f "${tmp_in}"
+}
 trap cleanup EXIT
 
 if [[ $# -eq 0 || "${1:-}" = "-" ]]; then
-    tmp_in="$(mktemp)"
+    tmp_in="$(mktemp)" || exit 127
     cat > "${tmp_in}"
     input="${tmp_in}"
 else
@@ -52,5 +59,9 @@ else
     "${FLPDF_CLI_BIN}" qdf-fix "${input}" "${tmp_out}"
 fi
 rc=$?
+# The process substitution above runs sed asynchronously; wait until it
+# drains before printing stdout, otherwise normalized stderr lines can
+# interleave or be lost when qtest compares them against the fixture.
+wait
 cat "${tmp_out}"
 exit $rc
