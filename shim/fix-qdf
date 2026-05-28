@@ -1,22 +1,56 @@
 #!/usr/bin/env bash
 #
-# shim/fix-qdf — shadow stub for the qpdf-side `fix-qdf` helper binary.
+# shim/fix-qdf — delegating adapter for the qpdf-side `fix-qdf` helper,
+# backed by `flpdf qdf-fix` (qpdf-fix-qdf-equivalent subcommand).
 #
-# Some `vendor/qpdf-qtest/*.test` files invoke `fix-qdf` directly. flpdf
-# does not provide a fix-qdf equivalent. Without this shim, hosts where
-# the qpdf apt package is installed (which ships /usr/bin/fix-qdf) would
-# silently route those invocations to the real qpdf helper, producing
-# spurious PASSes that do not reflect flpdf at all — and that disagree
-# with CI (which has no qpdf package).
+# qpdf-side CLI: `fix-qdf [filename]` — filename omitted reads stdin;
+#                output is always written to stdout.
+# flpdf-side  : `flpdf qdf-fix <INPUT> <OUTPUT>` — both required, both
+#                must be filesystem paths.
 #
-# This stub fails loudly so the surrounding subtest is recorded as a
-# real failure rather than a fake pass. See PR #8 (commit 8219223) for
-# the incident that prompted this.
+# This shim adapts the qpdf stdin/stdout contract to flpdf's positional
+# I/O by funnelling through temp files when needed, then streaming the
+# repaired output back on stdout.
+#
+# Required env:
+#   FLPDF_CLI_BIN  — absolute path to the flpdf-cli binary to delegate to.
+# Optional env:
+#   FLPDF_QTEST_NORMALIZE  — sed script path applied to stderr (same as shim/qpdf).
+#
+# Background: prior to flpdf gaining `qdf-fix`, this shim was a fail-loud
+# stub (PR #8 / commit 8219223) to keep the host's /usr/bin/fix-qdf from
+# producing spurious PASSes. Now that flpdf ships an equivalent, we
+# delegate — matching the README "PATH shadowing" guidance.
 
-cat >&2 <<'EOF'
-flpdf-qtest: fix-qdf is not provided by flpdf (qpdf-side helper).
-flpdf-qtest: the harness deliberately shadows host /usr/bin/fix-qdf
-flpdf-qtest: to keep survey numbers honest. If you intentionally want
-flpdf-qtest: this helper for a test, you must explicitly provide one.
-EOF
-exit 127
+set -u
+
+if [[ -z "${FLPDF_CLI_BIN:-}" ]]; then
+    echo "shim/fix-qdf: FLPDF_CLI_BIN is not set" >&2
+    exit 127
+fi
+if [[ ! -x "${FLPDF_CLI_BIN}" ]]; then
+    echo "shim/fix-qdf: FLPDF_CLI_BIN=${FLPDF_CLI_BIN} is not executable" >&2
+    exit 127
+fi
+
+tmp_in=""
+tmp_out="$(mktemp)"
+cleanup() { rm -f "${tmp_in}" "${tmp_out}"; }
+trap cleanup EXIT
+
+if [[ $# -eq 0 || "${1:-}" = "-" ]]; then
+    tmp_in="$(mktemp)"
+    cat > "${tmp_in}"
+    input="${tmp_in}"
+else
+    input="$1"
+fi
+
+if [[ -n "${FLPDF_QTEST_NORMALIZE:-}" && -r "${FLPDF_QTEST_NORMALIZE}" ]]; then
+    "${FLPDF_CLI_BIN}" qdf-fix "${input}" "${tmp_out}" 2> >(sed -f "${FLPDF_QTEST_NORMALIZE}" 1>&2)
+else
+    "${FLPDF_CLI_BIN}" qdf-fix "${input}" "${tmp_out}"
+fi
+rc=$?
+cat "${tmp_out}"
+exit $rc
