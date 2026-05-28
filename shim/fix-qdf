@@ -33,6 +33,14 @@ if [[ ! -x "${FLPDF_CLI_BIN}" ]]; then
     exit 127
 fi
 
+# qpdf-side fix-qdf accepts at most one positional (a filename, or none
+# to read stdin). Refuse extras explicitly rather than silently dropping
+# them — silent argument loss is a footgun for future .test authors.
+if [[ $# -gt 1 ]]; then
+    echo "shim/fix-qdf: usage: fix-qdf [filename|-]" >&2
+    exit 2
+fi
+
 tmp_in=""
 tmp_out="$(mktemp)" || exit 127
 cleanup() {
