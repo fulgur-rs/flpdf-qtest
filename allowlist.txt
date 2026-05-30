@@ -55,3 +55,24 @@ split-pages:split pages %d at beginning
 # Follow-up: flpdf-9kl (epic flpdf-vrn).
 rotate-pages:page rotation
 split-pages:split pages pdf extension
+
+# Minimal promote batch from full survey at flpdf 23e71d9 (2026-05-27).
+# Both entries have been passing in CI since at least flpdf 91080c7
+# (2026-05-19) and exercise flpdf via the qpdf shim:
+#   - json:check stream data (16, all) — file comparison subtest; the
+#     compared files were produced by the qpdf shim → flpdf earlier in
+#     json.test, so the byte equality is a real flpdf assertion.
+#   - qpdf-json:json-output with file — invokes `qpdf --json-output=2
+#     ... minimal.pdf a.json` (single command, exit 0, empty
+#     stdout/stderr). Goes through shim → flpdf.
+# Both names are unique within their .test files so the verifier's
+# name-only match is unambiguous. Same shape and policy as the
+# 2026-05-18 minimal batch above.
+#
+# Excluded from this batch: fix-qdf.test subtests. Despite passing
+# locally on hosts where the qpdf package is installed, those tests
+# invoke the standalone `fix-qdf` helper binary (not `qpdf`), which the
+# shim does not intercept — so they exercise system /usr/bin/fix-qdf,
+# not flpdf, and fail on CI which has no qpdf package.
+json:check stream data (16, all)
+qpdf-json:json-output with file
