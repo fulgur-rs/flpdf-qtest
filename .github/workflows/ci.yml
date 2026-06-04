@@ -12,8 +12,8 @@ on:
         required: false
         default: main
   schedule:
-    # Weekly regression sweep against flpdf main HEAD.
-    - cron: "0 18 * * 1"
+    # Nightly regression sweep against flpdf main HEAD.
+    - cron: "0 18 * * *"
 
 permissions:
   contents: read
