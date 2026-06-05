@@ -40,7 +40,7 @@ else
     remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 fi
 work="$(mktemp -d)"
-trap 'rm -rf "${work}"' EXIT
+trap '[[ -n "${work:-}" ]] && rm -rf "${work}"' EXIT
 
 # Fresh repo; fetch the existing branch tip, or start an orphan on first run.
 git -C "${work}" init -q
@@ -55,7 +55,12 @@ else
     git -C "${work}" checkout -q --orphan "${branch}"
 fi
 
-# Append this run's record to the historical series.
+# Append this run's record to the historical series. If the existing file
+# lacks a trailing newline (manual edit, conflict resolution), add one first so
+# the last existing record and this one don't merge into one corrupt line.
+if [[ -f "${work}/metrics.jsonl" && -n "$(tail -c 1 "${work}/metrics.jsonl")" ]]; then
+    echo "" >> "${work}/metrics.jsonl"
+fi
 cat "${new_line}" >> "${work}/metrics.jsonl"
 
 # Re-render the trend chart from the full history.

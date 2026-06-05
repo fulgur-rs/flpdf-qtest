@@ -23,14 +23,22 @@ _SERIES = ("regressions", "candidates")
 
 
 def load_records(path: Path) -> list[dict]:
-    """Parse a metrics JSONL file, skipping blank lines."""
+    """Parse a metrics JSONL file, skipping blank lines. Plotting is
+    best-effort: an unparseable line (manual edit, stray conflict marker)
+    is warned about and skipped rather than crashing the whole render."""
     records: list[dict] = []
     with path.open("r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
+        for line_no, raw in enumerate(fh, 1):
+            line = raw.strip()
             if not line:
                 continue
-            records.append(json.loads(line))
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                print(
+                    f"plot-metrics: skipping invalid JSON on line {line_no}: {e}",
+                    file=sys.stderr,
+                )
     return records
 
 
@@ -40,12 +48,16 @@ def build_spec(records: list[dict]) -> dict:
     series gets its own colored line."""
     values: list[dict] = []
     for r in records:
+        timestamp = r.get("timestamp")
+        if not timestamp:
+            continue  # a record with no timestamp can't be placed on the axis
         for metric in _SERIES:
+            value = r.get(metric)
             values.append(
                 {
-                    "timestamp": r["timestamp"],
+                    "timestamp": timestamp,
                     "metric": metric,
-                    "value": r.get(metric, 0),
+                    "value": value if value is not None else 0,
                 }
             )
     return {

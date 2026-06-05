@@ -58,6 +58,20 @@ class LoadRecordsTest(unittest.TestCase):
         self.assertEqual(recs[1]["regressions"], 1)
 
 
+class LoadRecordsRobustnessTest(unittest.TestCase):
+    def test_skips_invalid_json_lines(self) -> None:
+        content = (
+            '{"timestamp":"2026-06-03T00:00:00Z","regressions":1,"candidates":5}\n'
+            "not json at all\n"
+            "<<<<<<< HEAD\n"
+            '{"timestamp":"2026-06-04T00:00:00Z","regressions":0,"candidates":4}\n'
+        )
+        recs = plot_metrics.load_records(_tmp(content))
+        self.assertEqual(len(recs), 2)
+        self.assertEqual(recs[0]["regressions"], 1)
+        self.assertEqual(recs[1]["candidates"], 4)
+
+
 class BuildSpecTest(unittest.TestCase):
     def test_spec_is_vegalite_with_both_series(self) -> None:
         recs = plot_metrics.load_records(_tmp(_SAMPLE))
@@ -68,6 +82,23 @@ class BuildSpecTest(unittest.TestCase):
         metrics = {v["metric"] for v in values}
         self.assertIn("regressions", metrics)
         self.assertIn("candidates", metrics)
+
+    def test_skips_records_without_timestamp(self) -> None:
+        recs = [
+            {"regressions": 1, "candidates": 2},  # no timestamp -> dropped
+            {"timestamp": "2026-06-04T00:00:00Z", "regressions": 0, "candidates": 1},
+        ]
+        values = plot_metrics.build_spec(recs)["data"]["values"]
+        # Only the timestamped record contributes (one row per series).
+        self.assertEqual(len(values), len(plot_metrics._SERIES))
+        self.assertTrue(all(v["timestamp"] for v in values))
+
+    def test_missing_metric_defaults_to_zero(self) -> None:
+        recs = [{"timestamp": "2026-06-04T00:00:00Z", "regressions": 3}]
+        values = plot_metrics.build_spec(recs)["data"]["values"]
+        by_metric = {v["metric"]: v["value"] for v in values}
+        self.assertEqual(by_metric["regressions"], 3)
+        self.assertEqual(by_metric["candidates"], 0)
 
 
 @unittest.skipUnless(_HAS_VLC, "vl-convert-python not installed")
