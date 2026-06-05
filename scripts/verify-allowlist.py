@@ -138,8 +138,19 @@ def _fmt(entries: Iterable[AllowlistEntry | Result]) -> list[str]:
 
 
 def judge(
-    results: list[Result], allowlist: list[AllowlistEntry]
+    results: list[Result],
+    allowlist: list[AllowlistEntry],
+    *,
+    include_candidates: bool = True,
 ) -> tuple[int, str]:
+    """Judge results against the allowlist and render a Markdown summary.
+
+    When ``include_candidates`` is False the long enumerated
+    ``## Allowlist candidates`` block is omitted — used for the GitHub Job
+    Summary headline, which keeps the counts, regressions, missing entries,
+    and verdict but drops the (potentially thousands-long) candidate list.
+    The candidate *count* line is unaffected.
+    """
     regressions: list[Result] = []
     missing: list[AllowlistEntry] = []
     unexpected_pass: list[Result] = []
@@ -192,7 +203,7 @@ def judge(
         for n in _fmt(missing):
             lines.append(f"- {n}")
         lines.append("")
-    if unexpected_pass:
+    if unexpected_pass and include_candidates:
         lines.append("## Allowlist candidates (consider adding)")
         for n in _fmt(unexpected_pass):
             lines.append(f"- {n}")
@@ -205,6 +216,13 @@ def judge(
     return exit_code, "\n".join(lines)
 
 
+def _with_drift(summary: str, drift_msg: str | None) -> str:
+    """Prepend the parse-drift warning banner to a summary, if present."""
+    if not drift_msg:
+        return summary
+    return f"> ⚠️ {drift_msg}\n\n{summary}"
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("log", type=Path, help="qtest-driver output log")
@@ -213,7 +231,18 @@ def main(argv: list[str] | None = None) -> int:
         "--summary",
         type=Path,
         default=None,
-        help="write Markdown summary to this path (always written)",
+        help="write the full Markdown summary to this path (always written)",
+    )
+    ap.add_argument(
+        "--step-summary",
+        type=Path,
+        default=None,
+        help=(
+            "append a headline summary (counts + regressions + missing + "
+            "verdict, without the long candidate list) to this path. Intended "
+            "for a CI step summary such as $GITHUB_STEP_SUMMARY; appended, not "
+            "overwritten."
+        ),
     )
     args = ap.parse_args(argv)
 
@@ -244,11 +273,21 @@ def main(argv: list[str] | None = None) -> int:
     exit_code, summary = judge(results, allowlist)
     if drift_msg:
         # Make the drift visible in the summary artifact too.
-        summary = f"> ⚠️ {drift_msg}\n\n{summary}"
+        summary = _with_drift(summary, drift_msg)
         exit_code = max(exit_code, 1)
     sys.stdout.write(summary)
     if args.summary:
         args.summary.write_text(summary, encoding="utf-8")
+    if args.step_summary:
+        # Headline only: same counts/regressions/missing/verdict and the same
+        # drift banner, but without the long candidate enumeration. Appended
+        # (GitHub convention) so other steps' summaries are preserved.
+        _, headline = judge(results, allowlist, include_candidates=False)
+        headline = _with_drift(headline, drift_msg)
+        if not headline.endswith("\n"):
+            headline += "\n"
+        with args.step_summary.open("a", encoding="utf-8") as fh:
+            fh.write(headline)
     return exit_code
 
 
