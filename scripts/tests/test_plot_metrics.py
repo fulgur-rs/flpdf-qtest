@@ -29,7 +29,9 @@ try:
     import vl_convert as _vlc  # noqa: F401
 
     _HAS_VLC = True
-except Exception:
+except ImportError:
+    # Only a missing install disables the render tests; a broken/incompatible
+    # vl_convert should surface as a real error, not be silently skipped.
     _HAS_VLC = False
 
 _SAMPLE = textwrap.dedent(
