@@ -134,9 +134,22 @@ if [[ ${#stems[@]} -eq 0 ]]; then
 **Verdict: OK (empty allowlist)**
 EOF
     cat "${summary}"
+    # Surface the same minimal summary in the CI Job Summary (append). If a
+    # prior step left content without a trailing newline, separate it first so
+    # our header starts on its own line.
+    if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+        [[ -s "${GITHUB_STEP_SUMMARY}" ]] && echo "" >> "${GITHUB_STEP_SUMMARY}"
+        cat "${summary}" >> "${GITHUB_STEP_SUMMARY}"
+    fi
     exit 0
 fi
 
-python3 "${repo_root}/scripts/verify-allowlist.py" \
-    "${log}" "${repo_root}/allowlist.txt" \
-    --summary "${summary}"
+# Under GitHub Actions, also append a headline (counts + regressions, no long
+# candidate list) to the run's Job Summary. Locally GITHUB_STEP_SUMMARY is
+# unset, so this is a no-op and only the full qtest-summary.md is written.
+verify_args=( "${log}" "${repo_root}/allowlist.txt" --summary "${summary}" )
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    verify_args+=( --step-summary "${GITHUB_STEP_SUMMARY}" )
+fi
+
+python3 "${repo_root}/scripts/verify-allowlist.py" "${verify_args[@]}"

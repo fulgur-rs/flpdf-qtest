@@ -190,5 +190,120 @@ class JudgeTest(unittest.TestCase):
         self.assertIn("Allowlist candidates", summary)
 
 
+class HeadlineSummaryTest(unittest.TestCase):
+    """The headline summary (include_candidates=False) drops only the long
+    enumerated candidate list — everything that flips the verdict stays."""
+
+    def _judge(self, results, allowlist_text, **kw):
+        al = _tmp(allowlist_text)
+        entries = verify_allowlist.parse_allowlist(al)
+        return verify_allowlist.judge(results, entries, **kw)
+
+    def test_headline_omits_candidate_list_but_keeps_count(self) -> None:
+        results = [
+            verify_allowlist.Result("arg-parsing", "surprise", True),
+        ]
+        _exit, summary = self._judge(results, "", include_candidates=False)
+        # The headline count line is still present...
+        self.assertIn("Allowlist-candidates (non-allowlist PASS): **1**", summary)
+        # ...but the long enumerated section and its entries are dropped.
+        self.assertNotIn("## Allowlist candidates", summary)
+        self.assertNotIn("arg-parsing:surprise", summary)
+
+    def test_headline_keeps_regressions_and_verdict(self) -> None:
+        results = [verify_allowlist.Result("arg-parsing", "req", False)]
+        exit_code, summary = self._judge(
+            results, "arg-parsing:req\n", include_candidates=False
+        )
+        self.assertEqual(exit_code, 1)
+        self.assertIn("## Regressions", summary)
+        self.assertIn("arg-parsing:req", summary)
+        self.assertIn("**Verdict: FAIL**", summary)
+
+    def test_headline_keeps_missing(self) -> None:
+        results = [verify_allowlist.Result("arg-parsing", "other", True)]
+        _exit, summary = self._judge(
+            results, "arg-parsing:gone\n", include_candidates=False
+        )
+        self.assertIn("## Missing", summary)
+        self.assertIn("arg-parsing:gone", summary)
+
+    def test_full_summary_default_keeps_candidates(self) -> None:
+        # The default (full) summary is unchanged — candidates listed.
+        results = [verify_allowlist.Result("arg-parsing", "surprise", True)]
+        _exit, summary = self._judge(results, "")
+        self.assertIn("## Allowlist candidates", summary)
+        self.assertIn("arg-parsing:surprise", summary)
+
+
+class StepSummaryFileTest(unittest.TestCase):
+    """End-to-end main() behaviour for the --step-summary flag."""
+
+    def _run(self, log_text, allowlist_text, *, prefill=""):
+        log = _tmp(log_text)
+        allowlist = _tmp(allowlist_text)
+        full = _tmp("")
+        step = _tmp(prefill)
+        rc = verify_allowlist.main(
+            [
+                str(log),
+                str(allowlist),
+                "--summary",
+                str(full),
+                "--step-summary",
+                str(step),
+            ]
+        )
+        return rc, full.read_text(encoding="utf-8"), step.read_text(encoding="utf-8")
+
+    def test_step_summary_is_headline_full_summary_is_complete(self) -> None:
+        log = """
+            arg-parsing  1 (surprise)                  ... PASSED
+            arg-parsing test 2 (req) FAILED
+            """
+        _rc, full, step = self._run(log, "arg-parsing:req\n")
+        # Full artifact keeps the long candidate list.
+        self.assertIn("## Allowlist candidates", full)
+        self.assertIn("arg-parsing:surprise", full)
+        # Step summary is the headline: regression yes, candidate list no.
+        self.assertIn("## Regressions", step)
+        self.assertNotIn("## Allowlist candidates", step)
+        self.assertNotIn("arg-parsing:surprise", step)
+
+    def test_step_summary_appends_preserving_existing_content(self) -> None:
+        log = "arg-parsing  1 (a)                  ... PASSED\n"
+        _rc, _full, step = self._run(log, "", prefill="## previous step\n\n")
+        self.assertIn("## previous step", step)
+        self.assertIn("# qtest-summary", step)
+        # Existing content comes first; appended, not overwritten.
+        self.assertLess(step.index("## previous step"), step.index("# qtest-summary"))
+
+    def test_step_summary_not_glued_to_existing_content_without_newline(
+        self,
+    ) -> None:
+        # A prior step may have written content with no trailing newline.
+        # The headline header must not glue onto that last line.
+        log = "arg-parsing  1 (a)                  ... PASSED\n"
+        _rc, _full, step = self._run(log, "", prefill="prior step output")
+        self.assertNotIn("prior step output# qtest-summary", step)
+        # The header begins on its own line.
+        idx = step.index("# qtest-summary")
+        self.assertEqual(step[idx - 1], "\n")
+
+    def test_step_summary_inherits_drift_warning(self) -> None:
+        # Total tests summary disagrees with the parsed count -> drift.
+        log = """
+            arg-parsing  1 (a)                  ... PASSED
+            arg-parsing  2 (b)                  ... PASSED
+
+            TESTS COMPLETE.  Summary:
+            Total tests: 5
+            """
+        rc, full, step = self._run(log, "")
+        self.assertEqual(rc, 1)
+        self.assertIn("⚠️", step)
+        self.assertIn("⚠️", full)
+
+
 if __name__ == "__main__":
     unittest.main()
