@@ -278,6 +278,18 @@ class StepSummaryFileTest(unittest.TestCase):
         # Existing content comes first; appended, not overwritten.
         self.assertLess(step.index("## previous step"), step.index("# qtest-summary"))
 
+    def test_step_summary_not_glued_to_existing_content_without_newline(
+        self,
+    ) -> None:
+        # A prior step may have written content with no trailing newline.
+        # The headline header must not glue onto that last line.
+        log = "arg-parsing  1 (a)                  ... PASSED\n"
+        _rc, _full, step = self._run(log, "", prefill="prior step output")
+        self.assertNotIn("prior step output# qtest-summary", step)
+        # The header begins on its own line.
+        idx = step.index("# qtest-summary")
+        self.assertEqual(step[idx - 1], "\n")
+
     def test_step_summary_inherits_drift_warning(self) -> None:
         # Total tests summary disagrees with the parsed count -> drift.
         log = """

@@ -286,6 +286,10 @@ def main(argv: list[str] | None = None) -> int:
         headline = _with_drift(headline, drift_msg)
         if not headline.endswith("\n"):
             headline += "\n"
+        # If a prior step left content without a trailing newline, separate it
+        # so our `# qtest-summary` header starts on its own line.
+        if args.step_summary.exists() and args.step_summary.stat().st_size > 0:
+            headline = "\n" + headline
         with args.step_summary.open("a", encoding="utf-8") as fh:
             fh.write(headline)
     return exit_code

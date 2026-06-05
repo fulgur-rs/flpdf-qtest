@@ -134,8 +134,11 @@ if [[ ${#stems[@]} -eq 0 ]]; then
 **Verdict: OK (empty allowlist)**
 EOF
     cat "${summary}"
-    # Surface the same minimal summary in the CI Job Summary (append).
+    # Surface the same minimal summary in the CI Job Summary (append). If a
+    # prior step left content without a trailing newline, separate it first so
+    # our header starts on its own line.
     if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+        [[ -s "${GITHUB_STEP_SUMMARY}" ]] && echo "" >> "${GITHUB_STEP_SUMMARY}"
         cat "${summary}" >> "${GITHUB_STEP_SUMMARY}"
     fi
     exit 0
