@@ -3,6 +3,7 @@ harness.log
 qtest.log
 qtest-summary.md
 qtest-results.xml
+qtest-metrics.jsonl
 TEST-*.xml
 
 # OS / editor scratch

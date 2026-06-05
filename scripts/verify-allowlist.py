@@ -17,6 +17,7 @@ given, regardless of exit code, so CI can upload it as an artifact.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from dataclasses import dataclass
@@ -137,20 +138,20 @@ def _fmt(entries: Iterable[AllowlistEntry | Result]) -> list[str]:
     return sorted(out)
 
 
-def judge(
-    results: list[Result],
-    allowlist: list[AllowlistEntry],
-    *,
-    include_candidates: bool = True,
-) -> tuple[int, str]:
-    """Judge results against the allowlist and render a Markdown summary.
+@dataclass(frozen=True)
+class Buckets:
+    """The five outcome buckets of a run, judged against the allowlist."""
 
-    When ``include_candidates`` is False the long enumerated
-    ``## Allowlist candidates`` block is omitted — used for the GitHub Job
-    Summary headline, which keeps the counts, regressions, missing entries,
-    and verdict but drops the (potentially thousands-long) candidate list.
-    The candidate *count* line is unaffected.
-    """
+    expected_pass: list[Result]
+    regressions: list[Result]
+    missing: list[AllowlistEntry]
+    unexpected_pass: list[Result]
+    informational: list[Result]
+
+
+def _bucket(results: list[Result], allowlist: list[AllowlistEntry]) -> Buckets:
+    """Partition results into the five outcome buckets. Shared by judge()
+    (Markdown rendering) and build_metrics() (time-series record)."""
     regressions: list[Result] = []
     missing: list[AllowlistEntry] = []
     unexpected_pass: list[Result] = []
@@ -176,6 +177,66 @@ def judge(
             unexpected_pass.append(r)
         else:
             informational.append(r)
+
+    return Buckets(
+        expected_pass=expected_pass,
+        regressions=regressions,
+        missing=missing,
+        unexpected_pass=unexpected_pass,
+        informational=informational,
+    )
+
+
+def build_metrics(
+    results: list[Result],
+    allowlist: list[AllowlistEntry],
+    *,
+    commit: str,
+    timestamp: str,
+    drift: bool = False,
+) -> dict:
+    """Build one time-series record for a run. Counts mirror the summary;
+    ``commit`` (the flpdf SHA under test) and ``timestamp`` are supplied by
+    the caller so this stays deterministic and testable. ``drift`` records a
+    parse-drift night and forces the verdict to FAIL, matching the summary
+    (which is also bumped to FAIL on drift)."""
+    b = _bucket(results, allowlist)
+    regressions = len(b.regressions)
+    missing = len(b.missing)
+    return {
+        "timestamp": timestamp,
+        "flpdf_commit": commit,
+        "total": len(results),
+        "expected_pass": len(b.expected_pass),
+        "regressions": regressions,
+        "missing": missing,
+        "candidates": len(b.unexpected_pass),
+        "informational": len(b.informational),
+        "drift": drift,
+        "verdict": "OK" if not regressions and not missing and not drift else "FAIL",
+    }
+
+
+def judge(
+    results: list[Result],
+    allowlist: list[AllowlistEntry],
+    *,
+    include_candidates: bool = True,
+) -> tuple[int, str]:
+    """Judge results against the allowlist and render a Markdown summary.
+
+    When ``include_candidates`` is False the long enumerated
+    ``## Allowlist candidates`` block is omitted — used for the GitHub Job
+    Summary headline, which keeps the counts, regressions, missing entries,
+    and verdict but drops the (potentially thousands-long) candidate list.
+    The candidate *count* line is unaffected.
+    """
+    b = _bucket(results, allowlist)
+    expected_pass = b.expected_pass
+    regressions = b.regressions
+    missing = b.missing
+    unexpected_pass = b.unexpected_pass
+    informational = b.informational
 
     exit_code = 0 if not regressions and not missing else 1
 
@@ -244,6 +305,26 @@ def main(argv: list[str] | None = None) -> int:
             "overwritten."
         ),
     )
+    ap.add_argument(
+        "--metrics",
+        type=Path,
+        default=None,
+        help=(
+            "append one JSON time-series record (counts + verdict + metadata) "
+            "to this path, for nightly trend collection. Appended, not "
+            "overwritten."
+        ),
+    )
+    ap.add_argument(
+        "--commit",
+        default="",
+        help="flpdf commit SHA under test, recorded in the --metrics line",
+    )
+    ap.add_argument(
+        "--timestamp",
+        default="",
+        help="ISO-8601 run timestamp recorded in the --metrics line",
+    )
     args = ap.parse_args(argv)
 
     if not args.log.is_file():
@@ -292,6 +373,17 @@ def main(argv: list[str] | None = None) -> int:
             headline = "\n" + headline
         with args.step_summary.open("a", encoding="utf-8") as fh:
             fh.write(headline)
+    if args.metrics:
+        # One JSON record per run, appended for nightly trend collection.
+        record = build_metrics(
+            results,
+            allowlist,
+            commit=args.commit,
+            timestamp=args.timestamp,
+            drift=drift_msg is not None,
+        )
+        with args.metrics.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, sort_keys=True) + "\n")
     return exit_code
 
 

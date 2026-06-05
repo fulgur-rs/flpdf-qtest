@@ -152,4 +152,15 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     verify_args+=( --step-summary "${GITHUB_STEP_SUMMARY}" )
 fi
 
+# Always emit a single metrics line for this run (harmless locally). CI decides
+# whether to persist it to the metrics-data history. FLPDF_COMMIT is the SHA of
+# the flpdf checkout under test, supplied by CI; empty locally.
+metrics="${repo_root}/qtest-metrics.jsonl"
+: > "${metrics}"
+verify_args+=(
+    --metrics "${metrics}"
+    --commit "${FLPDF_COMMIT:-}"
+    --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+)
+
 python3 "${repo_root}/scripts/verify-allowlist.py" "${verify_args[@]}"
