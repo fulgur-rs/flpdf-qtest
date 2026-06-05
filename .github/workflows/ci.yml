@@ -45,8 +45,21 @@ jobs:
           ref: ${{ steps.flpdf_ref.outputs.ref }}
           path: flpdf
 
+      - name: Resolve flpdf SHA
+        id: flpdf_sha
+        run: echo "sha=$(git -C flpdf rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Python deps
+        # vl-convert-python is needed by plot-metrics.py and its unit test.
+        run: python3 -m pip install vl-convert-python
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -60,8 +73,8 @@ jobs:
             cargo-${{ runner.os }}-${{ steps.flpdf_ref.outputs.ref }}-
             cargo-${{ runner.os }}-
 
-      - name: Verify-allowlist unit tests
-        run: python3 -m unittest scripts.tests.test_verify_allowlist
+      - name: Unit tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
       - name: Build flpdf-cli
         working-directory: flpdf
@@ -70,6 +83,7 @@ jobs:
       - name: Run qtest acceptance suite
         env:
           FLPDF_CLI_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf
+          FLPDF_COMMIT: ${{ steps.flpdf_sha.outputs.sha }}
         run: ./scripts/run.sh
 
       - name: Upload qtest artifacts
@@ -81,4 +95,39 @@ jobs:
             harness.log
             qtest.log
             qtest-summary.md
+            qtest-metrics.jsonl
           if-no-files-found: ignore
+
+  # Nightly only: append the run's metrics to the metrics-data history branch
+  # and re-render the trend chart. Isolated from the qtest job so that job keeps
+  # contents:read; this one needs contents:write to push. Best-effort.
+  publish-metrics:
+    needs: qtest
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read  # download-artifact from the qtest job
+    steps:
+      - name: Checkout flpdf-qtest
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Python deps
+        run: python3 -m pip install vl-convert-python
+
+      - name: Download qtest metrics
+        uses: actions/download-artifact@v4
+        with:
+          name: qtest-results
+          path: artifacts
+
+      - name: Publish metrics to metrics-data branch
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/publish-metrics.sh artifacts/qtest-metrics.jsonl

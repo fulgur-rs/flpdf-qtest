@@ -6,6 +6,7 @@ Run with: python3 -m unittest scripts/tests/test_verify_allowlist.py
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import textwrap
@@ -303,6 +304,131 @@ class StepSummaryFileTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("⚠️", step)
         self.assertIn("⚠️", full)
+
+
+class MetricsRecordTest(unittest.TestCase):
+    """build_metrics() turns a run into one time-series record."""
+
+    def _metrics(self, results, allowlist_text, **kw):
+        al = _tmp(allowlist_text)
+        entries = verify_allowlist.parse_allowlist(al)
+        return verify_allowlist.build_metrics(results, entries, **kw)
+
+    def test_record_has_counts_and_metadata(self) -> None:
+        results = [
+            verify_allowlist.Result("arg-parsing", "ok", True),    # allowlist PASS
+            verify_allowlist.Result("arg-parsing", "bad", False),  # allowlist FAIL
+            verify_allowlist.Result("other", "cand", True),        # candidate
+            verify_allowlist.Result("other", "info", False),       # informational
+        ]
+        m = self._metrics(
+            results,
+            "arg-parsing:ok\narg-parsing:bad\n",
+            commit="abc123",
+            timestamp="2026-06-05T00:00:00Z",
+        )
+        self.assertEqual(m["flpdf_commit"], "abc123")
+        self.assertEqual(m["timestamp"], "2026-06-05T00:00:00Z")
+        self.assertEqual(m["total"], 4)
+        self.assertEqual(m["expected_pass"], 1)
+        self.assertEqual(m["regressions"], 1)
+        self.assertEqual(m["missing"], 0)
+        self.assertEqual(m["candidates"], 1)
+        self.assertEqual(m["informational"], 1)
+        self.assertEqual(m["verdict"], "FAIL")
+
+    def test_verdict_ok_when_clean(self) -> None:
+        results = [verify_allowlist.Result("arg-parsing", "ok", True)]
+        m = self._metrics(
+            results, "arg-parsing:ok\n", commit="x", timestamp="t"
+        )
+        self.assertEqual(m["verdict"], "OK")
+        self.assertEqual(m["regressions"], 0)
+
+    def test_missing_entry_makes_verdict_fail(self) -> None:
+        results = [verify_allowlist.Result("arg-parsing", "present", True)]
+        m = self._metrics(
+            results, "arg-parsing:gone\n", commit="x", timestamp="t"
+        )
+        self.assertEqual(m["missing"], 1)
+        self.assertEqual(m["verdict"], "FAIL")
+
+    def test_no_drift_by_default(self) -> None:
+        results = [verify_allowlist.Result("arg-parsing", "ok", True)]
+        m = self._metrics(results, "arg-parsing:ok\n", commit="x", timestamp="t")
+        self.assertFalse(m["drift"])
+        self.assertEqual(m["verdict"], "OK")
+
+    def test_drift_forces_fail_and_is_recorded(self) -> None:
+        # A parse-drift night is a bad night even with zero regressions; the
+        # metric verdict must agree with the summary (which is bumped to FAIL).
+        results = [verify_allowlist.Result("arg-parsing", "ok", True)]
+        m = self._metrics(
+            results, "arg-parsing:ok\n", commit="x", timestamp="t", drift=True
+        )
+        self.assertTrue(m["drift"])
+        self.assertEqual(m["regressions"], 0)
+        self.assertEqual(m["verdict"], "FAIL")
+
+
+class MetricsFlagTest(unittest.TestCase):
+    """End-to-end main() behaviour for the --metrics flag."""
+
+    def _run(self, log_text, allowlist_text, *, prefill="", **flags):
+        log = _tmp(log_text)
+        allowlist = _tmp(allowlist_text)
+        metrics = _tmp(prefill)
+        argv = [str(log), str(allowlist), "--metrics", str(metrics)]
+        for k, v in flags.items():
+            argv += [f"--{k.replace('_', '-')}", v]
+        rc = verify_allowlist.main(argv)
+        return rc, metrics.read_text(encoding="utf-8")
+
+    def test_metrics_flag_appends_one_json_line(self) -> None:
+        log = "arg-parsing  1 (ok)                  ... PASSED\n"
+        _rc, text = self._run(
+            log,
+            "arg-parsing:ok\n",
+            commit="deadbeef",
+            timestamp="2026-06-05T12:00:00Z",
+        )
+        lines = [ln for ln in text.splitlines() if ln.strip()]
+        self.assertEqual(len(lines), 1)
+        obj = json.loads(lines[0])
+        self.assertEqual(obj["flpdf_commit"], "deadbeef")
+        self.assertEqual(obj["timestamp"], "2026-06-05T12:00:00Z")
+        self.assertEqual(obj["total"], 1)
+        self.assertEqual(obj["expected_pass"], 1)
+        self.assertEqual(obj["verdict"], "OK")
+
+    def test_metrics_records_drift_from_log(self) -> None:
+        # "Total tests: 5" disagrees with the single parsed result -> drift.
+        log = """
+            arg-parsing  1 (ok)                  ... PASSED
+
+            TESTS COMPLETE.  Summary:
+            Total tests: 5
+            """
+        _rc, text = self._run(
+            log, "arg-parsing:ok\n", commit="c", timestamp="t"
+        )
+        obj = json.loads([ln for ln in text.splitlines() if ln.strip()][-1])
+        self.assertTrue(obj["drift"])
+        self.assertEqual(obj["verdict"], "FAIL")
+
+    def test_metrics_flag_appends_to_existing_history(self) -> None:
+        log = "arg-parsing  1 (ok)                  ... PASSED\n"
+        _rc, text = self._run(
+            log,
+            "arg-parsing:ok\n",
+            prefill='{"old": "record"}\n',
+            commit="c",
+            timestamp="t",
+        )
+        lines = [ln for ln in text.splitlines() if ln.strip()]
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(json.loads(lines[0]), {"old": "record"})
+        self.assertEqual(json.loads(lines[1])["flpdf_commit"], "c")
 
 
 if __name__ == "__main__":
