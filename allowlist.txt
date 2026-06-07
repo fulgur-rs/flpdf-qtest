@@ -76,3 +76,50 @@ split-pages:split pages pdf extension
 # not flpdf, and fail on CI which has no qpdf package.
 json:check stream data (16, all)
 qpdf-json:json-output with file
+
+# Promote batch 2026-06-07, from full survey at flpdf 99e6d63 (2026-06-05).
+# Each entry verified against THREE criteria (see memory
+# feedback_allowlist_promote_criteria):
+#   1. name uniqueness — subtest name occurs exactly once in its .test;
+#   2. multi-survey stability — verify-allowlist expected_pass +1 with 0 new
+#      regressions on the clean surveys 99e6d63 (2026-06-05) and 2a9bc92
+#      (2026-05-29); the nine qpdf-only entries also hold on 23e71d9
+#      (2026-05-27), giving three clean surveys;
+#   3. qpdf-only — each subtest's own $td->COMMAND invokes `qpdf ...`
+#      (→ shim → flpdf), not a host helper.
+# (e34d70a from 2026-05-30 is a corrupt double-run survey — the same subtest
+#  appears as both FAILED and PASSED, so even the pre-existing allowlist goes
+#  red there; it is excluded as a baseline.)
+decode-parameters:decode parameters empty list
+decode-parameters:stream with indirect decode parms
+encryption:create reference qdf
+inline-images:complex inline image parsing
+linearization:linearized and modified
+linearization:modified
+many-nulls:copy file with many nulls
+preserve-unref:drop unused objects
+qpdf-json:PDF to qdf
+
+# encryption:decrypt — PR #229 `feat(cli): --decrypt`. Stable +1/0-regression
+# on the two surveys where the feature exists (99e6d63, 2a9bc92); correctly
+# absent on the pre-#229 survey 23e71d9 (feature absence, not instability).
+# The subtest name is loop-generated from the filename, so re-check its match
+# count stays 1 in future surveys before assuming it is permanently stable.
+encryption:decrypt enc-XI-attachments-base.pdf
+
+# Deliberately EXCLUDED from this batch (re-evaluate in a later survey):
+#   - encryption:make sure there is no xref stream — its own COMMAND is
+#     `grep /ObjStm b.pdf | wc -l`, a host grep/wc assertion, NOT a qpdf call,
+#     so passing it is not an flpdf-CLI compatibility claim (criterion 3).
+#   - fix-qdf:fix-qdf 1 / fix-qdf 1 from pipe — only ONE survey (99e6d63)
+#     exercised the committed delegating adapter shim/fix-qdf and passed via
+#     flpdf; the plain 2a9bc92 survey ran the fail-loud stub (FAIL) and the
+#     23e71d9 PASS predates the stub (host /usr/bin/fix-qdf bleed-through, a
+#     false PASS). Needs a second clean full survey on the adapter shim before
+#     promotion — this exact entry broke CI once (PR #8 / commit 8219223).
+#   - encryption:copy enc-XI-attachments-base.pdf, page-without-contents:*,
+#     qpdf-json:good:* — loop-generated subtest names (per-file/per-arg); match
+#     count can drift between surveys, so deferred pending stable counts.
+#   - encryption:check against base ×28, unicode-password:* repeats — duplicate
+#     names; a single allowlist line would match every instance and go red on
+#     any one FAIL. Needs verifier subtest-identity support (line/index).
