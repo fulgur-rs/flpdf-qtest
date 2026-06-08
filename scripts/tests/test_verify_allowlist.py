@@ -330,6 +330,7 @@ class MetricsRecordTest(unittest.TestCase):
         self.assertEqual(m["flpdf_commit"], "abc123")
         self.assertEqual(m["timestamp"], "2026-06-05T00:00:00Z")
         self.assertEqual(m["total"], 4)
+        self.assertEqual(m["allowlist"], 2)
         self.assertEqual(m["expected_pass"], 1)
         self.assertEqual(m["regressions"], 1)
         self.assertEqual(m["missing"], 0)

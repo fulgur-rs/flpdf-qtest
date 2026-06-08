@@ -27,7 +27,7 @@ Summary added in PR #12 — that shows a single run; this shows history.
 
 1. **Produce** — `scripts/verify-allowlist.py` gains `--metrics <path>`. It
    writes ONE JSON object (a single line) with the counts `judge()` already
-   computes — `total`, `expected_pass`, `regressions`, `missing`,
+   computes — `total`, `allowlist`, `expected_pass`, `regressions`, `missing`,
    `candidates`, `informational` — plus `verdict`, and metadata supplied by the
    caller via `--commit <sha>` and `--timestamp <iso8601>`. Metadata is passed
    in (not generated) so the emitter stays deterministic and unit-testable.
@@ -37,8 +37,9 @@ Summary added in PR #12 — that shows a single run; this shows history.
    checks out `metrics-data` (bootstrapping it as an orphan branch on first
    run), appends the metrics line, renders the chart, commits both, and pushes.
 3. **Render** — `scripts/plot-metrics.py` reads `metrics.jsonl`, builds a
-   Vega-Lite spec (multi-series line chart: regressions + candidates, with
-   total available), and calls `vl_convert.vegalite_to_svg(...)` to write
+   Vega-Lite spec (multi-series line chart: regressions + candidates +
+   allowlist, with total available), and calls `vl_convert.vegalite_to_svg(...)`
+   to write
    `trend.svg`.
 4. **Show** — `trend.svg` + a short README on `metrics-data`; the nightly Job
    Summary gets one extra line linking to the chart.
