@@ -207,6 +207,7 @@ def build_metrics(
         "timestamp": timestamp,
         "flpdf_commit": commit,
         "total": len(results),
+        "allowlist": len(allowlist),
         "expected_pass": len(b.expected_pass),
         "regressions": regressions,
         "missing": missing,

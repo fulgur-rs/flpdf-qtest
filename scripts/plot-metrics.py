@@ -18,8 +18,10 @@ import sys
 from pathlib import Path
 
 # Series we plot. These are the actionable trends: regressions should stay at
-# zero, and candidates should trend down as they are promoted into allowlist.
-_SERIES = ("regressions", "candidates")
+# zero, candidates should trend down as they are promoted into allowlist, and
+# allowlist (the size of the allowlist itself) should trend up as candidates
+# get promoted.
+_SERIES = ("regressions", "candidates", "allowlist")
 
 
 def load_records(path: Path) -> list[dict]:

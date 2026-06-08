@@ -75,7 +75,7 @@ class LoadRecordsRobustnessTest(unittest.TestCase):
 
 
 class BuildSpecTest(unittest.TestCase):
-    def test_spec_is_vegalite_with_both_series(self) -> None:
+    def test_spec_is_vegalite_with_series(self) -> None:
         recs = plot_metrics.load_records(_tmp(_SAMPLE))
         spec = plot_metrics.build_spec(recs)
         self.assertIn("vega-lite", spec["$schema"])
@@ -84,6 +84,20 @@ class BuildSpecTest(unittest.TestCase):
         metrics = {v["metric"] for v in values}
         self.assertIn("regressions", metrics)
         self.assertIn("candidates", metrics)
+        self.assertIn("allowlist", metrics)
+
+    def test_spec_includes_allowlist_series(self) -> None:
+        recs = [
+            {
+                "timestamp": "2026-06-04T00:00:00Z",
+                "regressions": 0,
+                "candidates": 4,
+                "allowlist": 12,
+            }
+        ]
+        values = plot_metrics.build_spec(recs)["data"]["values"]
+        by_metric = {v["metric"]: v["value"] for v in values}
+        self.assertEqual(by_metric["allowlist"], 12)
 
     def test_skips_records_without_timestamp(self) -> None:
         recs = [
