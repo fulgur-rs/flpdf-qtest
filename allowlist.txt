@@ -129,10 +129,10 @@ basic-parsing:no qdf
 coalesce-contents:coalesce to qdf
 content-preservation:convert inline-images to qdf
 encryption:copy enc-XI-attachments-base.pdf
-page-without-contents:convert no contents ()
-page-without-contents:convert no contents (--qdf)
 fix-qdf:fix-qdf 1
 fix-qdf:fix-qdf 1 from pipe
+page-without-contents:convert no contents ()
+page-without-contents:convert no contents (--qdf)
 
 # Still deliberately EXCLUDED (re-evaluate in a later survey):
 #   - encryption:make sure there is no xref stream — its own COMMAND is
