@@ -107,19 +107,44 @@ qpdf-json:PDF to qdf
 # count stays 1 in future surveys before assuming it is permanently stable.
 encryption:decrypt enc-XI-attachments-base.pdf
 
-# Deliberately EXCLUDED from this batch (re-evaluate in a later survey):
+# Promote batch 2026-06-10, from full survey at flpdf cf9348d (FINDINGS-
+# coverage-check-20260610.md). These eight were DEFERRED in the 2026-06-07
+# batch above; cf9348d resolves both deferral reasons:
+#   - cf9348d is now the THIRD clean adapter-shim survey (after 2a9bc92-fixqdf
+#     2026-05-29 and 99e6d63 2026-06-05). In all three, raw harness.log shows
+#     each of the eight at total=1 / PASS=1 / FAIL=0 — i.e. the loop-generated
+#     names (page-without-contents per-$arg, encryption per-filename, fix-qdf
+#     per-n) hold match-count == 1, the drift the 0607 batch was waiting on.
+#   - fix-qdf 1 / 1 from pipe pass via the committed delegating adapter
+#     shim/fix-qdf (commit c38828f) → `flpdf qdf-fix`, NOT host bleed: in the
+#     same three surveys `fix-qdf 2` is FAIL=1 (flpdf lacks xref-stream QDF),
+#     which would PASS if /usr/bin/fix-qdf were bleeding through. So these are
+#     genuine flpdf assertions and safe on CI (which runs the same shim with
+#     FLPDF_CLI_BIN). The 23e71d9 survey is excluded for fix-qdf — there
+#     fix-qdf 2 PASSed (host bleed), a false positive.
+# All eight: name unique in their .test; COMMAND is `qpdf ...` (→shim→flpdf)
+# except the two fix-qdf entries (→adapter shim→flpdf). e34d70a (corrupt
+# double-run) excluded as baseline as before.
+basic-parsing:no qdf
+coalesce-contents:coalesce to qdf
+content-preservation:convert inline-images to qdf
+encryption:copy enc-XI-attachments-base.pdf
+fix-qdf:fix-qdf 1
+fix-qdf:fix-qdf 1 from pipe
+page-without-contents:convert no contents ()
+page-without-contents:convert no contents (--qdf)
+
+# Still deliberately EXCLUDED (re-evaluate in a later survey):
 #   - encryption:make sure there is no xref stream — its own COMMAND is
 #     `grep /ObjStm b.pdf | wc -l`, a host grep/wc assertion, NOT a qpdf call,
 #     so passing it is not an flpdf-CLI compatibility claim (criterion 3).
-#   - fix-qdf:fix-qdf 1 / fix-qdf 1 from pipe — only ONE survey (99e6d63)
-#     exercised the committed delegating adapter shim/fix-qdf and passed via
-#     flpdf; the plain 2a9bc92 survey ran the fail-loud stub (FAIL) and the
-#     23e71d9 PASS predates the stub (host /usr/bin/fix-qdf bleed-through, a
-#     false PASS). Needs a second clean full survey on the adapter shim before
-#     promotion — this exact entry broke CI once (PR #8 / commit 8219223).
-#   - encryption:copy enc-XI-attachments-base.pdf, page-without-contents:*,
-#     qpdf-json:good:* — loop-generated subtest names (per-file/per-arg); match
-#     count can drift between surveys, so deferred pending stable counts.
+#   - fix-qdf:fix-qdf 2 / 2 from pipe / identity fix-qdf 2 / with big object
+#     stream — flpdf `qdf-fix` rejects xref-stream/object-stream QDF
+#     (`no classic xref table found`); real flpdf gap, FAIL on the adapter
+#     shim. fix-qdf:identity fix-qdf 1 is a DUPLICATE name (appears in both
+#     the direct and pipe loops), so it stays excluded too.
+#   - qpdf-json:good:* — loop-generated subtest names; match counts not yet
+#     re-confirmed stable, deferred pending a per-name count check.
 #   - encryption:check against base ×28, unicode-password:* repeats — duplicate
 #     names; a single allowlist line would match every instance and go red on
 #     any one FAIL. Needs verifier subtest-identity support (line/index).
