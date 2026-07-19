@@ -153,7 +153,13 @@ fulgur_ok=0
 if command -v npx >/dev/null; then
     render_dir="$(mktemp -d)"
     cp "${trust_dir}/spec.json" "${render_dir}/spec.json"
-    if (cd "${render_dir}" && env -u GH_TOKEN npx --yes \
+    # 120s covers the cold-cache `npx --yes` install (registry fetch of the
+    # pinned prebuilt binary) plus the actual render. If chart-cli or the
+    # registry hangs, timeout kills it so the nightly job doesn't sit blocked
+    # waiting on network I/O with no upper bound. --kill-after=5s escalates
+    # to SIGKILL if the initial SIGTERM is ignored.
+    if (cd "${render_dir}" && env -u GH_TOKEN \
+            timeout --kill-after=5s 120s npx --yes \
             "@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}" \
             render spec.json -o trend-fulgur.svg --dsl vegalite); then
         if head -c 5 "${render_dir}/trend-fulgur.svg" 2>/dev/null | grep -q '<svg'; then
