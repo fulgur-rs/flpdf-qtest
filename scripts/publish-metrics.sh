@@ -43,6 +43,23 @@ else
     : "${GITHUB_REPOSITORY:?publish-metrics: GITHUB_REPOSITORY is required}"
     remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
     remote_public="https://github.com/${GITHUB_REPOSITORY}.git"
+    # Token is now captured in ${remote}; drop it from the shell's
+    # runtime environment so the fulgur render subshell (and everything
+    # after it) does not inherit it. Git still authenticates against the
+    # remote because the token is embedded in ${remote}'s URL — no env
+    # var is required past this point.
+    #
+    # Residual: Linux keeps /proc/$$/environ pointing at bash's exec-time
+    # env range, and `unset` does not deterministically rewrite it, so a
+    # same-UID attacker walking the process tree (e.g. reading
+    # /proc/$PPID/environ from a compromised chart-cli render) could
+    # still recover the token during the script's lifetime. Fully closing
+    # this would require re-execing bash to reset the range, which we do
+    # not do here — the exposure is bounded by an ephemeral, repo-scoped
+    # job token, and the layered defenses above (version pin, isolated
+    # render dir, scrubbed auth remote, GH_TOKEN removed from render env)
+    # reduce what a compromised package would successfully extract.
+    unset GH_TOKEN
 fi
 work="$(mktemp -d)"
 trap '[[ -n "${work:-}" ]] && rm -rf "${work}"' EXIT
@@ -88,21 +105,46 @@ python3 "${repo_root}/scripts/plot-metrics.py" \
 # fulgur-chart fails on the current spec, keep the previous trend-fulgur.svg
 # on the branch and continue.
 #
-# Supply-chain hardening: pin to a reviewed version rather than `latest`, and
-# scrub GH_TOKEN from the render subshell's environment. Combined with the
-# origin remote_public swap above, a compromised chart-cli package cannot read
-# either the token env var or the authenticated remote URL. Bump the pin
-# deliberately after reviewing the release notes; that bump is the mechanism
-# that keeps this a dogfooding target.
+# Supply-chain hardening:
+#   1. Pin to a reviewed version rather than `latest`. Bump the pin
+#      deliberately after reviewing release notes; that bump is what
+#      keeps this a real dogfooding target.
+#   2. Run the render inside an isolated scratch directory that contains
+#      only a copy of the input spec — no ${work}, no .git/, no metrics
+#      or README files. A compromised chart-cli package therefore has no
+#      neighbouring artifacts to tamper with before the later `git add`
+#      stages them.
+#   3. GH_TOKEN was already dropped from the environment at the top of
+#      the script; env -u is a belt-and-suspenders scrub on the child.
+#   4. On failure, restore the previously-tracked trend-fulgur.svg (if
+#      any) from the index instead of leaving the working tree with an
+#      unstaged deletion — otherwise the README's conditional link would
+#      quietly drop even though the SVG still exists on the branch.
 FULGUR_CHART_CLI_VERSION="0.1.20"
 fulgur_ok=0
 if command -v npx >/dev/null; then
-    if env -u GH_TOKEN npx --yes "@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}" \
-        render "${work}/spec.json" -o "${work}/trend-fulgur.svg" --dsl vegalite; then
-        fulgur_ok=1
+    render_dir="$(mktemp -d)"
+    cp "${work}/spec.json" "${render_dir}/spec.json"
+    if (cd "${render_dir}" && env -u GH_TOKEN npx --yes \
+            "@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}" \
+            render spec.json -o trend-fulgur.svg --dsl vegalite); then
+        if head -c 5 "${render_dir}/trend-fulgur.svg" 2>/dev/null | grep -q '<svg'; then
+            cp "${render_dir}/trend-fulgur.svg" "${work}/trend-fulgur.svg"
+            fulgur_ok=1
+        else
+            echo "publish-metrics: fulgur-chart output was not SVG; keeping previous" >&2
+        fi
     else
         echo "publish-metrics: fulgur-chart render failed; keeping previous trend-fulgur.svg" >&2
-        rm -f "${work}/trend-fulgur.svg"
+    fi
+    rm -rf "${render_dir}"
+    if [[ ${fulgur_ok} -eq 0 ]]; then
+        # Restore the tracked version so the README's conditional section
+        # continues to link it. If the file was never tracked (fresh
+        # bootstrap), checkout errors and we fall through to rm -f, which
+        # clears any partial write left in ${work}.
+        git -C "${work}" checkout -- trend-fulgur.svg 2>/dev/null || \
+            rm -f "${work}/trend-fulgur.svg"
     fi
 else
     echo "publish-metrics: npx not on PATH; skipping dogfood chart" >&2
