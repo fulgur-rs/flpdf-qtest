@@ -66,15 +66,24 @@ trap '[[ -n "${work:-}" ]] && rm -rf "${work}"' EXIT
 
 # Fresh repo; fetch the existing branch tip, or start an orphan on first run.
 git -C "${work}" init -q
+# Disable all git hooks in the throwaway clone. `${work}/.git/hooks/*` would
+# otherwise be an arbitrary-code-execution surface for a compromised render
+# (see Codex round-4): a malicious @fulgur-rs/chart-cli that reaches ${work}
+# via /tmp enumeration could plant a pre-commit / pre-push / post-checkout /
+# etc. hook that runs during the subsequent git operations. Pointing
+# core.hooksPath at /dev/null makes git ignore any hook file it finds.
+git -C "${work}" config core.hooksPath /dev/null
 # Scope the bot identity to this throwaway clone — never touch global config.
 git -C "${work}" config user.name "github-actions[bot]"
 git -C "${work}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 git -C "${work}" remote add origin "${remote}"
 if git -C "${work}" fetch -q --depth 1 origin "${branch}"; then
     git -C "${work}" checkout -q -b "${branch}" FETCH_HEAD
+    parent_sha=$(git -C "${work}" rev-parse HEAD)
 else
     echo "publish-metrics: ${branch} not found; bootstrapping orphan branch"
     git -C "${work}" checkout -q --orphan "${branch}"
+    parent_sha=""
 fi
 
 # Strip auth from origin so any code that reads .git/config (e.g. the fulgur
@@ -82,65 +91,72 @@ fi
 # before push.
 git -C "${work}" remote set-url origin "${remote_public}"
 
-# Append this run's record to the historical series. If the existing file
-# lacks a trailing newline (manual edit, conflict resolution), add one first so
-# the last existing record and this one don't merge into one corrupt line.
-if [[ -f "${work}/metrics.jsonl" && -n "$(tail -c 1 "${work}/metrics.jsonl")" ]]; then
-    echo "" >> "${work}/metrics.jsonl"
+# Generate all canonical artifacts inside a trust_dir that stays out of
+# ${work} for the duration of the third-party render. The commit itself is
+# assembled from git blob SHAs captured *before* any third-party code runs,
+# so a compromised chart-cli that later tampers with ${work} (staging
+# EVIL.txt, symlinking metrics.jsonl, planting hooks — all demonstrated by
+# Codex) cannot affect what ends up on the metrics-data branch. The working
+# tree is only used as scratch space for the render itself.
+trust_dir="$(mktemp -d)"
+trap '[[ -n "${work:-}" ]] && rm -rf "${work}"; [[ -n "${trust_dir:-}" ]] && rm -rf "${trust_dir}"' EXIT
+
+# Seed metrics.jsonl from the previous branch content, if any.
+if [[ -f "${work}/metrics.jsonl" ]]; then
+    cp "${work}/metrics.jsonl" "${trust_dir}/metrics.jsonl"
 fi
-cat "${new_line}" >> "${work}/metrics.jsonl"
+if [[ -f "${trust_dir}/metrics.jsonl" && -n "$(tail -c 1 "${trust_dir}/metrics.jsonl")" ]]; then
+    echo "" >> "${trust_dir}/metrics.jsonl"
+fi
+cat "${new_line}" >> "${trust_dir}/metrics.jsonl"
 
 # Re-render the trend chart from the full history. --spec-output emits the
 # Vega-Lite spec that fulgur-chart consumes below; the file is intermediate and
 # not committed to the branch.
 python3 "${repo_root}/scripts/plot-metrics.py" \
-    --input "${work}/metrics.jsonl" \
-    --output "${work}/trend.svg" \
-    --spec-output "${work}/spec.json"
+    --input "${trust_dir}/metrics.jsonl" \
+    --output "${trust_dir}/trend.svg" \
+    --spec-output "${trust_dir}/spec.json"
 
-# Snapshot the canonical artifacts before invoking third-party code. Same-UID
-# processes on the same /tmp can locate ${work} by scanning for /tmp/*/.git and
-# tamper with the files we are about to stage — moving the render to a sibling
-# mktemp dir is cosmetic, since chart-cli would still run under the same user
-# and could find and edit ${work}/metrics.jsonl or trend.svg before the `git
-# add` below. The full fix is OS-level isolation (a distinct uid or `unshare`
-# namespaces); pending that, this hash pair is a fail-close tripwire that
-# refuses to push if either file changed while the render was running.
-pre_metrics_sha=$(sha256sum "${work}/metrics.jsonl" | awk '{print $1}')
-pre_trend_sha=$(sha256sum "${work}/trend.svg" | awk '{print $1}')
+# Capture blob SHAs *before* the render. `hash-object -w` reads each file
+# (currently a regular file we just wrote — no symlink) and stores the
+# corresponding blob under ${work}/.git/objects/. From this point on the
+# commit content is pinned by SHA in a bash variable; if the render (or any
+# same-UID process racing with us) later replaces trust_dir/metrics.jsonl
+# with a symlink or rewrites it, the tree we push still points at the
+# original bytes because we assemble it from these captured SHAs, not from
+# the working tree at commit time.
+metrics_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/metrics.jsonl")
+trend_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/trend.svg")
 
 # Also render via fulgur-chart (dogfooding — sibling project still under
 # active development). Invoked via npx so no persistent install is needed:
 # GitHub Actions ubuntu-latest ships with Node.js, and --yes auto-installs the
 # prebuilt binary from optionalDependencies. Best-effort: if npx is missing or
-# fulgur-chart fails on the current spec, keep the previous trend-fulgur.svg
-# on the branch and continue.
+# fulgur-chart fails on the current spec, we reuse the previous branch's
+# trend-fulgur.svg blob (via parent_sha) and continue.
 #
 # Supply-chain hardening:
 #   1. Pin to a reviewed version rather than `latest`. Bump the pin
 #      deliberately after reviewing release notes; that bump is what
 #      keeps this a real dogfooding target.
-#   2. Run the render inside an isolated scratch directory that contains
-#      only a copy of the input spec — no ${work}, no .git/, no metrics
-#      or README files. A compromised chart-cli package therefore has no
-#      neighbouring artifacts to tamper with before the later `git add`
-#      stages them.
-#   3. GH_TOKEN was already dropped from the environment at the top of
-#      the script; env -u is a belt-and-suspenders scrub on the child.
-#   4. On failure, restore the previously-tracked trend-fulgur.svg (if
-#      any) from the index instead of leaving the working tree with an
-#      unstaged deletion — otherwise the README's conditional link would
-#      quietly drop even though the SVG still exists on the branch.
+#   2. Run the render in an isolated scratch directory that contains
+#      only a copy of the input spec — no ${work}, no .git/, no
+#      canonical artifacts. A compromised chart-cli can still enumerate
+#      /tmp and find ${work} or ${trust_dir}, but any tampering it does
+#      there is inert because the commit is built from blob SHAs
+#      captured above.
+#   3. GH_TOKEN is unset in the shell and env -u is a belt-and-suspenders
+#      scrub on the child.
 FULGUR_CHART_CLI_VERSION="0.1.20"
 fulgur_ok=0
 if command -v npx >/dev/null; then
     render_dir="$(mktemp -d)"
-    cp "${work}/spec.json" "${render_dir}/spec.json"
+    cp "${trust_dir}/spec.json" "${render_dir}/spec.json"
     if (cd "${render_dir}" && env -u GH_TOKEN npx --yes \
             "@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}" \
             render spec.json -o trend-fulgur.svg --dsl vegalite); then
         if head -c 5 "${render_dir}/trend-fulgur.svg" 2>/dev/null | grep -q '<svg'; then
-            cp "${render_dir}/trend-fulgur.svg" "${work}/trend-fulgur.svg"
             fulgur_ok=1
         else
             echo "publish-metrics: fulgur-chart output was not SVG; keeping previous" >&2
@@ -148,40 +164,28 @@ if command -v npx >/dev/null; then
     else
         echo "publish-metrics: fulgur-chart render failed; keeping previous trend-fulgur.svg" >&2
     fi
-    rm -rf "${render_dir}"
-    if [[ ${fulgur_ok} -eq 0 ]]; then
-        # Restore the tracked version so the README's conditional section
-        # continues to link it. If the file was never tracked (fresh
-        # bootstrap), checkout errors and we fall through to rm -f, which
-        # clears any partial write left in ${work}.
-        git -C "${work}" checkout -- trend-fulgur.svg 2>/dev/null || \
-            rm -f "${work}/trend-fulgur.svg"
-    fi
 else
     echo "publish-metrics: npx not on PATH; skipping dogfood chart" >&2
 fi
 
-# Verify the tripwire snapshotted above: if either canonical artifact was
-# rewritten by chart-cli (or any other same-UID process that raced with us),
-# refuse to publish. This makes the demonstrated /tmp-enumeration attack
-# fail-close instead of quietly landing tampered content on the branch.
-post_metrics_sha=$(sha256sum "${work}/metrics.jsonl" | awk '{print $1}')
-post_trend_sha=$(sha256sum "${work}/trend.svg" | awk '{print $1}')
-if [[ "${pre_metrics_sha}" != "${post_metrics_sha}" \
-      || "${pre_trend_sha}" != "${post_trend_sha}" ]]; then
-    echo "publish-metrics: SECURITY — canonical artifacts changed during fulgur render, refusing to push" >&2
-    echo "publish-metrics:   metrics.jsonl: ${pre_metrics_sha} -> ${post_metrics_sha}" >&2
-    echo "publish-metrics:   trend.svg:     ${pre_trend_sha} -> ${post_trend_sha}" >&2
-    exit 1
+# Resolve trend-fulgur.svg's blob. When the render succeeded, hash the fresh
+# output. When it did not, reuse the blob from the parent commit so the README
+# section stays linked to a valid file. When neither is available (first
+# bootstrap with a failing render), leave it empty and let the README section
+# fall through.
+fulgur_blob=""
+if [[ ${fulgur_ok} -eq 1 ]]; then
+    fulgur_blob=$(git -C "${work}" hash-object -w -- "${render_dir}/trend-fulgur.svg")
+elif [[ -n "${parent_sha}" ]]; then
+    fulgur_blob=$(git -C "${work}" rev-parse "${parent_sha}:trend-fulgur.svg" 2>/dev/null || echo "")
 fi
+[[ -n "${render_dir:-}" ]] && rm -rf "${render_dir}"
 
-# Regenerate the README each run: the canonical Vega-Lite section is always
-# present; the fulgur-chart section is only appended when trend-fulgur.svg
-# exists in the working tree (either freshly rendered this run, or already
-# tracked on the branch from a prior successful run). This avoids linking a
-# non-existent image on the initial bootstrap when npx is missing / fulgur
-# fails before any trend-fulgur.svg has ever been committed.
-cat > "${work}/README.md" <<'EOF'
+# Compose README from a heredoc, hash the bytes directly via --stdin so no
+# tampering vector along the trust_dir path can influence it, and record its
+# blob SHA.
+if [[ -n "${fulgur_blob}" ]]; then
+    readme_blob=$(git -C "${work}" hash-object -w --stdin <<'EOF'
 # qtest nightly metrics
 
 Time series of the nightly qtest acceptance run, one JSON record per night in
@@ -190,9 +194,6 @@ Time series of the nightly qtest acceptance run, one JSON record per night in
 ## Trend (Vega-Lite via vl-convert)
 
 ![trend](trend.svg)
-EOF
-if [[ -f "${work}/trend-fulgur.svg" ]]; then
-    cat >> "${work}/README.md" <<'EOF'
 
 ## Trend (fulgur-chart — dogfooding)
 
@@ -202,21 +203,62 @@ development; discrepancies are expected and are the point.
 
 ![trend-fulgur](trend-fulgur.svg)
 EOF
+    )
+else
+    readme_blob=$(git -C "${work}" hash-object -w --stdin <<'EOF'
+# qtest nightly metrics
+
+Time series of the nightly qtest acceptance run, one JSON record per night in
+`metrics.jsonl`. See the main branch for the harness itself.
+
+## Trend (Vega-Lite via vl-convert)
+
+![trend](trend.svg)
+EOF
+    )
 fi
 
-git -C "${work}" add metrics.jsonl trend.svg README.md
-if [[ ${fulgur_ok} -eq 1 && -f "${work}/trend-fulgur.svg" ]]; then
-    git -C "${work}" add trend-fulgur.svg
+# Assemble the tree from the captured blob SHAs. This is the pivotal step:
+# `mktree` builds the tree object purely from these SHAs, never consulting
+# the working tree or the index, so any state a compromised render left
+# behind in ${work} (staged EVIL.txt, symlinked metrics.jsonl, planted
+# hooks) has no way to influence what we are about to push.
+{
+    printf '100644 blob %s\tREADME.md\n' "${readme_blob}"
+    printf '100644 blob %s\tmetrics.jsonl\n' "${metrics_blob}"
+    printf '100644 blob %s\ttrend.svg\n' "${trend_blob}"
+    if [[ -n "${fulgur_blob}" ]]; then
+        printf '100644 blob %s\ttrend-fulgur.svg\n' "${fulgur_blob}"
+    fi
+} > "${trust_dir}/tree.txt"
+tree_sha=$(git -C "${work}" mktree < "${trust_dir}/tree.txt")
+
+# Skip when the resulting tree is identical to the parent commit's tree
+# (e.g. the fulgur render failed and there's no new metrics record).
+if [[ -n "${parent_sha}" ]]; then
+    parent_tree=$(git -C "${work}" rev-parse "${parent_sha}^{tree}")
+    if [[ "${tree_sha}" == "${parent_tree}" ]]; then
+        echo "publish-metrics: nothing to commit"
+        exit 0
+    fi
 fi
-if git -C "${work}" diff --cached --quiet; then
-    echo "publish-metrics: nothing to commit"
-    exit 0
-fi
-git -C "${work}" commit -q -m "metrics: nightly $(date -u +%Y-%m-%d)"
-# Restore the authenticated remote for push (was swapped to public above so
-# GH_TOKEN was not visible during the fulgur render).
+
+# Build the commit object from the tree + the parent (if any). Note that we
+# never run `git commit`, which means: (a) no hooks are triggered even if
+# something slipped past core.hooksPath, and (b) attacker-staged files in
+# the index (`git -C ${work} add EVIL.txt` from a compromised render) cannot
+# be committed — the index is not involved.
+commit_args=("${tree_sha}")
+[[ -n "${parent_sha}" ]] && commit_args=("${commit_args[@]}" -p "${parent_sha}")
+commit_sha=$(printf 'metrics: nightly %s\n' "$(date -u +%Y-%m-%d)" | \
+    git -C "${work}" commit-tree "${commit_args[@]}")
+
+# Restore the authenticated remote for push, then push the commit SHA
+# directly to the branch. --no-verify bypasses any pre-push hook file that
+# might exist in ${work}/.git/hooks (belt-and-suspenders — core.hooksPath
+# above already neutralises them).
 git -C "${work}" remote set-url origin "${remote}"
-git -C "${work}" push -q origin "HEAD:${branch}"
+git -C "${work}" push -q --no-verify origin "${commit_sha}:refs/heads/${branch}"
 echo "publish-metrics: pushed to ${branch}"
 
 # Link the chart from this job's Job Summary (nightly run only).
