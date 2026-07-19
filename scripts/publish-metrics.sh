@@ -98,6 +98,17 @@ python3 "${repo_root}/scripts/plot-metrics.py" \
     --output "${work}/trend.svg" \
     --spec-output "${work}/spec.json"
 
+# Snapshot the canonical artifacts before invoking third-party code. Same-UID
+# processes on the same /tmp can locate ${work} by scanning for /tmp/*/.git and
+# tamper with the files we are about to stage — moving the render to a sibling
+# mktemp dir is cosmetic, since chart-cli would still run under the same user
+# and could find and edit ${work}/metrics.jsonl or trend.svg before the `git
+# add` below. The full fix is OS-level isolation (a distinct uid or `unshare`
+# namespaces); pending that, this hash pair is a fail-close tripwire that
+# refuses to push if either file changed while the render was running.
+pre_metrics_sha=$(sha256sum "${work}/metrics.jsonl" | awk '{print $1}')
+pre_trend_sha=$(sha256sum "${work}/trend.svg" | awk '{print $1}')
+
 # Also render via fulgur-chart (dogfooding — sibling project still under
 # active development). Invoked via npx so no persistent install is needed:
 # GitHub Actions ubuntu-latest ships with Node.js, and --yes auto-installs the
@@ -148,6 +159,20 @@ if command -v npx >/dev/null; then
     fi
 else
     echo "publish-metrics: npx not on PATH; skipping dogfood chart" >&2
+fi
+
+# Verify the tripwire snapshotted above: if either canonical artifact was
+# rewritten by chart-cli (or any other same-UID process that raced with us),
+# refuse to publish. This makes the demonstrated /tmp-enumeration attack
+# fail-close instead of quietly landing tampered content on the branch.
+post_metrics_sha=$(sha256sum "${work}/metrics.jsonl" | awk '{print $1}')
+post_trend_sha=$(sha256sum "${work}/trend.svg" | awk '{print $1}')
+if [[ "${pre_metrics_sha}" != "${post_metrics_sha}" \
+      || "${pre_trend_sha}" != "${post_trend_sha}" ]]; then
+    echo "publish-metrics: SECURITY — canonical artifacts changed during fulgur render, refusing to push" >&2
+    echo "publish-metrics:   metrics.jsonl: ${pre_metrics_sha} -> ${post_metrics_sha}" >&2
+    echo "publish-metrics:   trend.svg:     ${pre_trend_sha} -> ${post_trend_sha}" >&2
+    exit 1
 fi
 
 # Regenerate the README each run: the canonical Vega-Lite section is always
