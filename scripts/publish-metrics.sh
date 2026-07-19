@@ -32,12 +32,17 @@ fi
 branch="metrics-data"
 # PUBLISH_METRICS_REMOTE overrides the push target (used by tests against a
 # local bare repo); otherwise build the authenticated GitHub URL from CI env.
+# remote_public keeps the token out of .git/config while we run third-party
+# code (npx fulgur-chart) in the same working tree — see the render step
+# below. It is swapped back to `remote` right before push.
 if [[ -n "${PUBLISH_METRICS_REMOTE:-}" ]]; then
     remote="${PUBLISH_METRICS_REMOTE}"
+    remote_public="${PUBLISH_METRICS_REMOTE}"
 else
     : "${GH_TOKEN:?publish-metrics: GH_TOKEN is required}"
     : "${GITHUB_REPOSITORY:?publish-metrics: GITHUB_REPOSITORY is required}"
     remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+    remote_public="https://github.com/${GITHUB_REPOSITORY}.git"
 fi
 work="$(mktemp -d)"
 trap '[[ -n "${work:-}" ]] && rm -rf "${work}"' EXIT
@@ -54,6 +59,11 @@ else
     echo "publish-metrics: ${branch} not found; bootstrapping orphan branch"
     git -C "${work}" checkout -q --orphan "${branch}"
 fi
+
+# Strip auth from origin so any code that reads .git/config (e.g. the fulgur
+# render below) cannot see GH_TOKEN. The authenticated URL is restored right
+# before push.
+git -C "${work}" remote set-url origin "${remote_public}"
 
 # Append this run's record to the historical series. If the existing file
 # lacks a trailing newline (manual edit, conflict resolution), add one first so
@@ -77,10 +87,18 @@ python3 "${repo_root}/scripts/plot-metrics.py" \
 # prebuilt binary from optionalDependencies. Best-effort: if npx is missing or
 # fulgur-chart fails on the current spec, keep the previous trend-fulgur.svg
 # on the branch and continue.
+#
+# Supply-chain hardening: pin to a reviewed version rather than `latest`, and
+# scrub GH_TOKEN from the render subshell's environment. Combined with the
+# origin remote_public swap above, a compromised chart-cli package cannot read
+# either the token env var or the authenticated remote URL. Bump the pin
+# deliberately after reviewing the release notes; that bump is the mechanism
+# that keeps this a dogfooding target.
+FULGUR_CHART_CLI_VERSION="0.1.20"
 fulgur_ok=0
 if command -v npx >/dev/null; then
-    if npx --yes @fulgur-rs/chart-cli render "${work}/spec.json" \
-        -o "${work}/trend-fulgur.svg" --dsl vegalite; then
+    if env -u GH_TOKEN npx --yes "@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}" \
+        render "${work}/spec.json" -o "${work}/trend-fulgur.svg" --dsl vegalite; then
         fulgur_ok=1
     else
         echo "publish-metrics: fulgur-chart render failed; keeping previous trend-fulgur.svg" >&2
@@ -90,7 +108,12 @@ else
     echo "publish-metrics: npx not on PATH; skipping dogfood chart" >&2
 fi
 
-# Regenerate the README each run so both charts are always referenced.
+# Regenerate the README each run: the canonical Vega-Lite section is always
+# present; the fulgur-chart section is only appended when trend-fulgur.svg
+# exists in the working tree (either freshly rendered this run, or already
+# tracked on the branch from a prior successful run). This avoids linking a
+# non-existent image on the initial bootstrap when npx is missing / fulgur
+# fails before any trend-fulgur.svg has ever been committed.
 cat > "${work}/README.md" <<'EOF'
 # qtest nightly metrics
 
@@ -100,6 +123,9 @@ Time series of the nightly qtest acceptance run, one JSON record per night in
 ## Trend (Vega-Lite via vl-convert)
 
 ![trend](trend.svg)
+EOF
+if [[ -f "${work}/trend-fulgur.svg" ]]; then
+    cat >> "${work}/README.md" <<'EOF'
 
 ## Trend (fulgur-chart — dogfooding)
 
@@ -109,6 +135,7 @@ development; discrepancies are expected and are the point.
 
 ![trend-fulgur](trend-fulgur.svg)
 EOF
+fi
 
 git -C "${work}" add metrics.jsonl trend.svg README.md
 if [[ ${fulgur_ok} -eq 1 && -f "${work}/trend-fulgur.svg" ]]; then
@@ -119,6 +146,9 @@ if git -C "${work}" diff --cached --quiet; then
     exit 0
 fi
 git -C "${work}" commit -q -m "metrics: nightly $(date -u +%Y-%m-%d)"
+# Restore the authenticated remote for push (was swapped to public above so
+# GH_TOKEN was not visible during the fulgur render).
+git -C "${work}" remote set-url origin "${remote}"
 git -C "${work}" push -q origin "HEAD:${branch}"
 echo "publish-metrics: pushed to ${branch}"
 
