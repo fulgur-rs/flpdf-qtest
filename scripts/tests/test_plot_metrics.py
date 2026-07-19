@@ -134,6 +134,24 @@ class MainTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertTrue(out.read_text(encoding="utf-8").lstrip().startswith("<svg"))
 
+    def test_main_writes_spec_output(self) -> None:
+        jsonl = _tmp(_SAMPLE)
+        out = _tmp("", suffix=".svg")
+        spec_out = _tmp("", suffix=".json")
+        rc = plot_metrics.main(
+            [
+                "--input", str(jsonl),
+                "--output", str(out),
+                "--spec-output", str(spec_out),
+            ]
+        )
+        self.assertEqual(rc, 0)
+        import json as _json
+        spec = _json.loads(spec_out.read_text(encoding="utf-8"))
+        self.assertIn("vega-lite", spec["$schema"])
+        metrics = {v["metric"] for v in spec["data"]["values"]}
+        self.assertEqual(metrics, set(plot_metrics._SERIES))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -63,23 +63,57 @@ if [[ -f "${work}/metrics.jsonl" && -n "$(tail -c 1 "${work}/metrics.jsonl")" ]]
 fi
 cat "${new_line}" >> "${work}/metrics.jsonl"
 
-# Re-render the trend chart from the full history.
+# Re-render the trend chart from the full history. --spec-output emits the
+# Vega-Lite spec that fulgur-chart consumes below; the file is intermediate and
+# not committed to the branch.
 python3 "${repo_root}/scripts/plot-metrics.py" \
-    --input "${work}/metrics.jsonl" --output "${work}/trend.svg"
+    --input "${work}/metrics.jsonl" \
+    --output "${work}/trend.svg" \
+    --spec-output "${work}/spec.json"
 
-# Seed a minimal README on first run.
-if [[ ! -f "${work}/README.md" ]]; then
-    cat > "${work}/README.md" <<'EOF'
+# Also render via fulgur-chart (dogfooding — sibling project still under
+# active development). Invoked via npx so no persistent install is needed:
+# GitHub Actions ubuntu-latest ships with Node.js, and --yes auto-installs the
+# prebuilt binary from optionalDependencies. Best-effort: if npx is missing or
+# fulgur-chart fails on the current spec, keep the previous trend-fulgur.svg
+# on the branch and continue.
+fulgur_ok=0
+if command -v npx >/dev/null; then
+    if npx --yes @fulgur-rs/chart-cli render "${work}/spec.json" \
+        -o "${work}/trend-fulgur.svg" --dsl vegalite; then
+        fulgur_ok=1
+    else
+        echo "publish-metrics: fulgur-chart render failed; keeping previous trend-fulgur.svg" >&2
+        rm -f "${work}/trend-fulgur.svg"
+    fi
+else
+    echo "publish-metrics: npx not on PATH; skipping dogfood chart" >&2
+fi
+
+# Regenerate the README each run so both charts are always referenced.
+cat > "${work}/README.md" <<'EOF'
 # qtest nightly metrics
 
 Time series of the nightly qtest acceptance run, one JSON record per night in
-`metrics.jsonl`, rendered below. See the main branch for the harness itself.
+`metrics.jsonl`. See the main branch for the harness itself.
+
+## Trend (Vega-Lite via vl-convert)
 
 ![trend](trend.svg)
+
+## Trend (fulgur-chart — dogfooding)
+
+Rendered from the same Vega-Lite spec via [fulgur-chart](https://github.com/fulgur-rs/fulgur-chart)'s
+`--dsl vegalite` subset. Kept alongside the canonical chart while fulgur-chart is under active
+development; discrepancies are expected and are the point.
+
+![trend-fulgur](trend-fulgur.svg)
 EOF
-fi
 
 git -C "${work}" add metrics.jsonl trend.svg README.md
+if [[ ${fulgur_ok} -eq 1 && -f "${work}/trend-fulgur.svg" ]]; then
+    git -C "${work}" add trend-fulgur.svg
+fi
 if git -C "${work}" diff --cached --quiet; then
     echo "publish-metrics: nothing to commit"
     exit 0
