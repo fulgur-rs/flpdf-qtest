@@ -106,6 +106,13 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--input", type=Path, required=True, help="metrics JSONL")
     ap.add_argument("--output", type=Path, required=True, help="output SVG path")
+    ap.add_argument(
+        "--spec-output",
+        type=Path,
+        default=None,
+        help="also write the Vega-Lite spec as JSON to this path "
+        "(used to feed the same spec to fulgur-chart for dogfooding)",
+    )
     args = ap.parse_args(argv)
 
     if not args.input.is_file():
@@ -115,7 +122,10 @@ def main(argv: list[str] | None = None) -> int:
     if not records:
         print("plot-metrics: no records to plot", file=sys.stderr)
         return 1
-    svg = render_svg(build_spec(records))
+    spec = build_spec(records)
+    if args.spec_output is not None:
+        args.spec_output.write_text(json.dumps(spec, indent=2), encoding="utf-8")
+    svg = render_svg(spec)
     args.output.write_text(svg, encoding="utf-8")
     return 0
 
