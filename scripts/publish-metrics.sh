@@ -162,10 +162,18 @@ if command -v npx >/dev/null; then
             timeout --kill-after=5s 120s npx --yes \
             "@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}" \
             render spec.json -o trend-fulgur.svg --dsl vegalite); then
-        if head -c 5 "${render_dir}/trend-fulgur.svg" 2>/dev/null | grep -q '<svg'; then
+        # Reject anything but a regular file (not a symlink, FIFO, socket,
+        # or device) before touching the output. A compromised chart-cli
+        # that mkfifo'd the output path would otherwise cause `head` to
+        # block on the FIFO past the render timeout — the 120s cap above
+        # only wraps npx, not this validation. `-f` is false for FIFOs and
+        # sockets, and `! -L` rules out symlinks that could point at an
+        # arbitrary slow file.
+        if [[ -f "${render_dir}/trend-fulgur.svg" && ! -L "${render_dir}/trend-fulgur.svg" ]] \
+            && head -c 5 "${render_dir}/trend-fulgur.svg" 2>/dev/null | grep -q '<svg'; then
             fulgur_ok=1
         else
-            echo "publish-metrics: fulgur-chart output was not SVG; keeping previous" >&2
+            echo "publish-metrics: fulgur-chart output was not a regular SVG file; keeping previous" >&2
         fi
     else
         echo "publish-metrics: fulgur-chart render failed; keeping previous trend-fulgur.svg" >&2
@@ -183,7 +191,12 @@ fulgur_blob=""
 if [[ ${fulgur_ok} -eq 1 ]]; then
     fulgur_blob=$(git -C "${work}" hash-object -w -- "${render_dir}/trend-fulgur.svg")
 elif [[ -n "${parent_sha}" ]]; then
-    fulgur_blob=$(git -C "${work}" rev-parse "${parent_sha}:trend-fulgur.svg" 2>/dev/null || echo "")
+    # --verify -q: without it, `git rev-parse <sha>:<missing-path>` prints
+    # the literal revspec to stdout (before erroring on stderr and exiting
+    # 128), which the `|| echo ""` fallback then captures as garbage into
+    # fulgur_blob and breaks mktree. --verify -q keeps stdout empty on
+    # miss so the || fallback resolves to the empty string as intended.
+    fulgur_blob=$(git -C "${work}" rev-parse --verify -q "${parent_sha}:trend-fulgur.svg" 2>/dev/null || echo "")
 fi
 [[ -n "${render_dir:-}" ]] && rm -rf "${render_dir}"
 
@@ -229,15 +242,18 @@ fi
 # the working tree or the index, so any state a compromised render left
 # behind in ${work} (staged EVIL.txt, symlinked metrics.jsonl, planted
 # hooks) has no way to influence what we are about to push.
-{
+# Pipe the tree spec directly into mktree — never through a disk file that
+# a same-UID watcher spawned by the render could rewrite between write and
+# read. (Codex demonstrated pushing an unlisted `zzz.txt` blob by mutating
+# such an intermediate file.)
+tree_sha=$({
     printf '100644 blob %s\tREADME.md\n' "${readme_blob}"
     printf '100644 blob %s\tmetrics.jsonl\n' "${metrics_blob}"
     printf '100644 blob %s\ttrend.svg\n' "${trend_blob}"
     if [[ -n "${fulgur_blob}" ]]; then
         printf '100644 blob %s\ttrend-fulgur.svg\n' "${fulgur_blob}"
     fi
-} > "${trust_dir}/tree.txt"
-tree_sha=$(git -C "${work}" mktree < "${trust_dir}/tree.txt")
+} | git -C "${work}" mktree)
 
 # Skip when the resulting tree is identical to the parent commit's tree
 # (e.g. the fulgur render failed and there's no new metrics record).
@@ -259,12 +275,18 @@ commit_args=("${tree_sha}")
 commit_sha=$(printf 'metrics: nightly %s\n' "$(date -u +%Y-%m-%d)" | \
     git -C "${work}" commit-tree "${commit_args[@]}")
 
-# Restore the authenticated remote for push, then push the commit SHA
-# directly to the branch. --no-verify bypasses any pre-push hook file that
-# might exist in ${work}/.git/hooks (belt-and-suspenders — core.hooksPath
-# above already neutralises them).
-git -C "${work}" remote set-url origin "${remote}"
-git -C "${work}" push -q --no-verify origin "${commit_sha}:refs/heads/${branch}"
+# Push directly with the authenticated URL on the command line — never
+# reintroduce it into `.git/config` via `remote set-url origin`. Writing
+# the token back to the throwaway clone's config after the untrusted
+# render has run would give any same-UID watcher that outlived npx a
+# window to read it (Codex round-5). Passing the URL as an argv token to
+# `git push` still exposes it briefly via /proc/<push-pid>/cmdline for
+# same-UID observers; fully hiding it would require a credential-helper
+# file or an isolated push process (systemd-run / container), which is
+# not addressed here — the residual is bounded by an ephemeral,
+# repo-scoped job token. --no-verify bypasses any pre-push hook file
+# (belt-and-suspenders — core.hooksPath already neutralises them).
+git -C "${work}" push -q --no-verify "${remote}" "${commit_sha}:refs/heads/${branch}"
 echo "publish-metrics: pushed to ${branch}"
 
 # Link the chart from this job's Job Summary (nightly run only).
