@@ -127,7 +127,6 @@ encryption:decrypt enc-XI-attachments-base.pdf
 # double-run) excluded as baseline as before.
 basic-parsing:no qdf
 coalesce-contents:coalesce to qdf
-content-preservation:convert inline-images to qdf
 encryption:copy enc-XI-attachments-base.pdf
 fix-qdf:fix-qdf 1
 fix-qdf:fix-qdf 1 from pipe
