@@ -130,10 +130,10 @@ class ParseLogTest(unittest.TestCase):
 
 
 class JudgeTest(unittest.TestCase):
-    def _judge(self, results, allowlist_text):
+    def _judge(self, results, allowlist_text, **kw):
         al = _tmp(allowlist_text)
         entries = verify_allowlist.parse_allowlist(al)
-        return verify_allowlist.judge(results, entries)
+        return verify_allowlist.judge(results, entries, **kw)
 
     def test_empty_allowlist_with_failures_is_ok(self) -> None:
         results = [
@@ -171,7 +171,7 @@ class JudgeTest(unittest.TestCase):
     def test_missing_allowlist_entry_flags_verdict_fail(self) -> None:
         # Allowlist entry never appeared in results — typo / upstream
         # rename. Same soft-fail contract as regressions: verdict FAIL,
-        # summary lists it, but exit_code stays 0.
+        # summary lists the offending entry by name, but exit_code stays 0.
         results = [
             verify_allowlist.Result("arg-parsing", "something else", True),
         ]
@@ -181,6 +181,7 @@ class JudgeTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("**Verdict: FAIL**", summary)
         self.assertIn("Missing", summary)
+        self.assertIn("arg-parsing:gone", summary)
 
     def test_whole_file_allowlist(self) -> None:
         results = [
@@ -198,6 +199,19 @@ class JudgeTest(unittest.TestCase):
         exit_code, summary = self._judge(results, "")
         self.assertEqual(exit_code, 0)
         self.assertIn("Allowlist candidates", summary)
+
+    def test_drift_flips_verdict_to_fail_without_regressions(self) -> None:
+        # judge() must agree with build_metrics() on drift: no regression
+        # and no missing entry, but drift=True → verdict FAIL. Otherwise
+        # the Markdown artifact and the --metrics record diverge.
+        results = [
+            verify_allowlist.Result("arg-parsing", "ok", True),
+        ]
+        exit_code, summary = self._judge(
+            results, "arg-parsing:ok\n", drift=True
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("**Verdict: FAIL**", summary)
 
 
 class HeadlineSummaryTest(unittest.TestCase):

@@ -83,6 +83,7 @@ class BuildSpecTest(unittest.TestCase):
         self.assertTrue(values)
         metrics = {v["metric"] for v in values}
         self.assertIn("regressions", metrics)
+        self.assertIn("missing", metrics)
         self.assertIn("candidates", metrics)
         self.assertIn("allowlist", metrics)
 
