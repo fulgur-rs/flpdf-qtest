@@ -5,10 +5,16 @@
 # Required env:
 #   FLPDF_CLI_BIN           Absolute path to a built flpdf binary (the
 #                           flpdf-cli crate builds a binary literally named
-#                           `flpdf`). If unset, the script looks for
-#                           ./flpdf/target/release/flpdf (matching the CI
-#                           checkout layout) and finally falls back to a
-#                           workspace-level `cargo build` if FLPDF_DIR is set.
+#                           `flpdf`). If unset, resolution order is:
+#                             1. FLPDF_DIR is set → build there and use
+#                                ${FLPDF_DIR}/target/release/flpdf. FLPDF_DIR
+#                                is treated as an explicit dev-loop override
+#                                and takes precedence over any pre-existing
+#                                repo-layout artifact so that iterating on
+#                                flpdf always uses fresh code.
+#                             2. Otherwise, use ./flpdf/target/release/flpdf
+#                                if it exists (matches the CI checkout layout).
+#                             3. Otherwise, error out.
 #   FLPDF_TEST_COMPARE_BIN  Absolute path to a built flpdf-test-compare
 #                           binary (the Rust port of qpdf's compare-for-test,
 #                           used by shim/qpdf-test-compare). Same resolution
@@ -19,7 +25,7 @@
 #                  FLPDF_CLI_BIN or FLPDF_TEST_COMPARE_BIN is not, the
 #                  script runs
 #                  `cargo build --release -p flpdf-cli -p flpdf-test-compare`
-#                  there.
+#                  there and always uses those freshly-built binaries.
 #   QTEST_TESTS    Space-separated list of .test stems to run. If unset,
 #                  every .test stem mentioned in allowlist.txt is run, plus
 #                  any --full=1 sentinel inclusion.
