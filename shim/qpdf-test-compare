@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+#
+# shim/qpdf-test-compare — placed on PATH ahead of any real
+# qpdf-test-compare so that .test files invoking
+# `qpdf-test-compare ACTUAL EXPECTED` are routed to flpdf-test-compare,
+# the Rust port that lives under flpdf's crates/flpdf-test-compare.
+#
+# The CLI contract is identical: two positional PDF paths, exit 0 on
+# match (stdout = expected file), exit 2 on mismatch (stdout = actual
+# file). We forward argv unchanged.
+#
+# Required env:
+#   FLPDF_TEST_COMPARE_BIN  — absolute path to the flpdf-test-compare
+#                             binary to delegate to.
+#
+# Optional env:
+#   FLPDF_QTEST_NORMALIZE   — when set to a sed script path, stderr is
+#                             filtered through it (same channel as
+#                             shim/qpdf). Success runs emit no stderr,
+#                             but error-path diagnostics carry a
+#                             "flpdf-test-compare:" prefix that a future
+#                             .test may want normalized to
+#                             "qpdf-test-compare:".
+
+set -u
+
+if [[ -z "${FLPDF_TEST_COMPARE_BIN:-}" ]]; then
+    echo "shim/qpdf-test-compare: FLPDF_TEST_COMPARE_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_COMPARE_BIN}" ]]; then
+    echo "shim/qpdf-test-compare: FLPDF_TEST_COMPARE_BIN=${FLPDF_TEST_COMPARE_BIN} is not executable" >&2
+    exit 127
+fi
+
+if [[ -n "${FLPDF_QTEST_NORMALIZE:-}" && -r "${FLPDF_QTEST_NORMALIZE}" ]]; then
+    exec "${FLPDF_TEST_COMPARE_BIN}" "$@" 2> >(sed -f "${FLPDF_QTEST_NORMALIZE}" 1>&2)
+fi
+
+exec "${FLPDF_TEST_COMPARE_BIN}" "$@"
