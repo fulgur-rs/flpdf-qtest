@@ -138,6 +138,33 @@ fix-qdf:fix-qdf 1 from pipe
 page-without-contents:convert no contents ()
 page-without-contents:convert no contents (--qdf)
 
+# Promote batch 2026-07-25, from full survey at flpdf 1f037dd (FINDINGS-
+# coverage-check-20260725.md). Ten qpdf-CLI compatibility subtests, each
+# verified against ALL THREE criteria (feedback_allowlist_promote_criteria):
+#   1. name uniqueness — raw harness.log match count == 1 (loop-generated
+#      names verified per-name, not by .test grep alone);
+#   2. multi-survey stability — verify-allowlist expected_pass +1 with 0 new
+#      regressions on multiple clean surveys. Two groups:
+#      A. Previously-ready 5 (031df92 × 2 + 1f037dd × 2 = 4 runs): the ones
+#         flagged in FINDINGS-20260618 §6 as "waiting on second observation."
+#      B. Long-stable 5 (99e6d63, cf9348d, d5c3dd3, 031df92, 1f037dd — 5+
+#         clean surveys, all 1/1). Held back in prior batches only for
+#         subtest-identity concerns which are now resolved by the per-log
+#         match-count check.
+#   3. qpdf-only — each subtest's own $td->COMMAND invokes `qpdf ...`
+#      (→ shim → flpdf); no host helper, no grep/wc assertion.
+# Sorted alphabetically by test stem (same convention as PR #16).
+copy-annotations:complex copy annotations
+encryption-parameters:linearize long-id.pdf
+encryption-parameters:linearize short-id.pdf
+encryption:create encrypted file
+encryption:empty owner password
+encryption:encrypt with AES
+encryption:encrypt with V=5,R=6
+form-xobject:overlay on page with no resources
+incremental:handle delete and don't reuse
+linearization:dump linearization: lin0
+
 # Still deliberately EXCLUDED (re-evaluate in a later survey):
 #   - encryption:make sure there is no xref stream — its own COMMAND is
 #     `grep /ObjStm b.pdf | wc -l`, a host grep/wc assertion, NOT a qpdf call,
