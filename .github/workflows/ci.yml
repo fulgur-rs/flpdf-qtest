@@ -76,13 +76,14 @@ jobs:
       - name: Unit tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
-      - name: Build flpdf-cli
+      - name: Build flpdf-cli and flpdf-test-compare
         working-directory: flpdf
-        run: cargo build --release -p flpdf-cli
+        run: cargo build --release -p flpdf-cli -p flpdf-test-compare
 
       - name: Run qtest acceptance suite
         env:
           FLPDF_CLI_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf
+          FLPDF_TEST_COMPARE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-compare
           FLPDF_COMMIT: ${{ steps.flpdf_sha.outputs.sha }}
         run: ./scripts/run.sh
 

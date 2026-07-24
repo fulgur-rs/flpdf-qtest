@@ -3,16 +3,29 @@
 # scripts/run.sh — drive the qtest acceptance suite against flpdf-cli.
 #
 # Required env:
-#   FLPDF_CLI_BIN  Absolute path to a built flpdf binary (the flpdf-cli crate
-#                  builds a binary literally named `flpdf`). If unset, the
-#                  script will look for ./flpdf/target/release/flpdf
-#                  (matching the CI checkout layout) and finally fall back
-#                  to a workspace-level `cargo build` if FLPDF_DIR is set.
+#   FLPDF_CLI_BIN           Absolute path to a built flpdf binary (the
+#                           flpdf-cli crate builds a binary literally named
+#                           `flpdf`). If unset, resolution order is:
+#                             1. FLPDF_DIR is set → build there and use
+#                                ${FLPDF_DIR}/target/release/flpdf. FLPDF_DIR
+#                                is treated as an explicit dev-loop override
+#                                and takes precedence over any pre-existing
+#                                repo-layout artifact so that iterating on
+#                                flpdf always uses fresh code.
+#                             2. Otherwise, use ./flpdf/target/release/flpdf
+#                                if it exists (matches the CI checkout layout).
+#                             3. Otherwise, error out.
+#   FLPDF_TEST_COMPARE_BIN  Absolute path to a built flpdf-test-compare
+#                           binary (the Rust port of qpdf's compare-for-test,
+#                           used by shim/qpdf-test-compare). Same resolution
+#                           order as FLPDF_CLI_BIN.
 #
 # Optional env:
-#   FLPDF_DIR      Absolute path to a flpdf checkout. If set and
-#                  FLPDF_CLI_BIN is not, the script runs
-#                  `cargo build --release -p flpdf-cli` there.
+#   FLPDF_DIR      Absolute path to a flpdf checkout. If set and either
+#                  FLPDF_CLI_BIN or FLPDF_TEST_COMPARE_BIN is not, the
+#                  script runs
+#                  `cargo build --release -p flpdf-cli -p flpdf-test-compare`
+#                  there and always uses those freshly-built binaries.
 #   QTEST_TESTS    Space-separated list of .test stems to run. If unset,
 #                  every .test stem mentioned in allowlist.txt is run, plus
 #                  any --full=1 sentinel inclusion.
@@ -34,12 +47,17 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${repo_root}"
 
-# --- locate flpdf-cli --------------------------------------------------------
+# --- locate flpdf-cli and flpdf-test-compare ---------------------------------
+#
+# Both binaries come from the same flpdf workspace, so if we're building
+# from FLPDF_DIR do it in a single cargo invocation (they share the
+# target dir and flpdf as a dependency; the second binary is essentially
+# free once flpdf-cli's dependency graph is compiled).
 
+need_build=0
 if [[ -z "${FLPDF_CLI_BIN:-}" ]]; then
     if [[ -n "${FLPDF_DIR:-}" ]]; then
-        echo "==> Building flpdf-cli in ${FLPDF_DIR}"
-        ( cd "${FLPDF_DIR}" && cargo build --release -p flpdf-cli )
+        need_build=1
         FLPDF_CLI_BIN="${FLPDF_DIR}/target/release/flpdf"
     elif [[ -x "${repo_root}/flpdf/target/release/flpdf" ]]; then
         FLPDF_CLI_BIN="${repo_root}/flpdf/target/release/flpdf"
@@ -48,12 +66,33 @@ if [[ -z "${FLPDF_CLI_BIN:-}" ]]; then
         exit 2
     fi
 fi
-export FLPDF_CLI_BIN
 
-if [[ ! -x "${FLPDF_CLI_BIN}" ]]; then
-    echo "run.sh: FLPDF_CLI_BIN=${FLPDF_CLI_BIN} is not executable" >&2
-    exit 2
+if [[ -z "${FLPDF_TEST_COMPARE_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_COMPARE_BIN="${FLPDF_DIR}/target/release/flpdf-test-compare"
+    elif [[ -x "${repo_root}/flpdf/target/release/flpdf-test-compare" ]]; then
+        FLPDF_TEST_COMPARE_BIN="${repo_root}/flpdf/target/release/flpdf-test-compare"
+    else
+        echo "run.sh: cannot locate flpdf-test-compare (set FLPDF_TEST_COMPARE_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
 fi
+
+if [[ ${need_build} -eq 1 ]]; then
+    echo "==> Building flpdf-cli and flpdf-test-compare in ${FLPDF_DIR}"
+    ( cd "${FLPDF_DIR}" && cargo build --release -p flpdf-cli -p flpdf-test-compare )
+fi
+
+export FLPDF_CLI_BIN
+export FLPDF_TEST_COMPARE_BIN
+
+for bin in "${FLPDF_CLI_BIN}" "${FLPDF_TEST_COMPARE_BIN}"; do
+    if [[ ! -x "${bin}" ]]; then
+        echo "run.sh: ${bin} is not executable" >&2
+        exit 2
+    fi
+done
 
 # --- prepare shim PATH -------------------------------------------------------
 #
