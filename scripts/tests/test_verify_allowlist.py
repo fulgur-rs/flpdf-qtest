@@ -130,10 +130,10 @@ class ParseLogTest(unittest.TestCase):
 
 
 class JudgeTest(unittest.TestCase):
-    def _judge(self, results, allowlist_text):
+    def _judge(self, results, allowlist_text, **kw):
         al = _tmp(allowlist_text)
         entries = verify_allowlist.parse_allowlist(al)
-        return verify_allowlist.judge(results, entries)
+        return verify_allowlist.judge(results, entries, **kw)
 
     def test_empty_allowlist_with_failures_is_ok(self) -> None:
         results = [
@@ -153,25 +153,35 @@ class JudgeTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("Expected pass (allowlist PASS): **1**", summary)
 
-    def test_allowlist_fail_is_regression(self) -> None:
+    def test_allowlist_fail_is_regression_verdict_only(self) -> None:
+        # An allowlist FAIL flips the verdict to FAIL and appears in the
+        # regressions section, but the exit code stays 0 — the failure is
+        # a data point on the trend chart, not a CI gate.
         results = [
             verify_allowlist.Result("arg-parsing", "required argument", False),
         ]
-        exit_code, _ = self._judge(
+        exit_code, summary = self._judge(
             results, "arg-parsing:required argument\n"
         )
-        self.assertEqual(exit_code, 1)
+        self.assertEqual(exit_code, 0)
+        self.assertIn("**Verdict: FAIL**", summary)
+        self.assertIn("## Regressions", summary)
+        self.assertIn("arg-parsing:required argument", summary)
 
-    def test_missing_allowlist_entry_fails(self) -> None:
-        # Allowlist entry never appeared in results — typo / upstream rename.
+    def test_missing_allowlist_entry_flags_verdict_fail(self) -> None:
+        # Allowlist entry never appeared in results — typo / upstream
+        # rename. Same soft-fail contract as regressions: verdict FAIL,
+        # summary lists the offending entry by name, but exit_code stays 0.
         results = [
             verify_allowlist.Result("arg-parsing", "something else", True),
         ]
         exit_code, summary = self._judge(
             results, "arg-parsing:gone\n"
         )
-        self.assertEqual(exit_code, 1)
+        self.assertEqual(exit_code, 0)
+        self.assertIn("**Verdict: FAIL**", summary)
         self.assertIn("Missing", summary)
+        self.assertIn("arg-parsing:gone", summary)
 
     def test_whole_file_allowlist(self) -> None:
         results = [
@@ -189,6 +199,19 @@ class JudgeTest(unittest.TestCase):
         exit_code, summary = self._judge(results, "")
         self.assertEqual(exit_code, 0)
         self.assertIn("Allowlist candidates", summary)
+
+    def test_drift_flips_verdict_to_fail_without_regressions(self) -> None:
+        # judge() must agree with build_metrics() on drift: no regression
+        # and no missing entry, but drift=True → verdict FAIL. Otherwise
+        # the Markdown artifact and the --metrics record diverge.
+        results = [
+            verify_allowlist.Result("arg-parsing", "ok", True),
+        ]
+        exit_code, summary = self._judge(
+            results, "arg-parsing:ok\n", drift=True
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("**Verdict: FAIL**", summary)
 
 
 class HeadlineSummaryTest(unittest.TestCase):
@@ -212,11 +235,14 @@ class HeadlineSummaryTest(unittest.TestCase):
         self.assertNotIn("arg-parsing:surprise", summary)
 
     def test_headline_keeps_regressions_and_verdict(self) -> None:
+        # Regressions and the FAIL verdict stay visible in the headline;
+        # exit_code stays 0 under the soft-fail contract (verdict is data,
+        # not a gate).
         results = [verify_allowlist.Result("arg-parsing", "req", False)]
         exit_code, summary = self._judge(
             results, "arg-parsing:req\n", include_candidates=False
         )
-        self.assertEqual(exit_code, 1)
+        self.assertEqual(exit_code, 0)
         self.assertIn("## Regressions", summary)
         self.assertIn("arg-parsing:req", summary)
         self.assertIn("**Verdict: FAIL**", summary)

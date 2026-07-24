@@ -17,11 +17,14 @@ import json
 import sys
 from pathlib import Path
 
-# Series we plot. These are the actionable trends: regressions should stay at
-# zero, candidates should trend down as they are promoted into allowlist, and
+# Series we plot. These are the actionable trends: regressions and missing
+# should stay at zero (both flip verdict to FAIL — regressions are
+# allowlisted subtests that started failing, missing are allowlisted subtests
+# that stopped appearing in the log, typically an upstream rename or a typo),
+# candidates should trend down as they are promoted into allowlist, and
 # allowlist (the size of the allowlist itself) should trend up as candidates
 # get promoted.
-_SERIES = ("regressions", "candidates", "allowlist")
+_SERIES = ("regressions", "missing", "candidates", "allowlist")
 
 
 def load_records(path: Path) -> list[dict]:

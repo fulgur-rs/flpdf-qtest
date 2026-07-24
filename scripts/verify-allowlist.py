@@ -5,9 +5,15 @@ Usage:
     scripts/verify-allowlist.py <qtest.log> <allowlist.txt> [--summary <path>]
 
 Exit codes:
-    0  No allowlist regression and no missing allowlisted entries.
-    1  At least one allowlisted entry failed, or an allowlisted entry did
-       not run, or the log could not be parsed.
+    0  Run completed. Policy failures (allowlisted entries that regressed
+       or did not run) are captured in the summary's ``**Verdict: FAIL**``
+       line and the --metrics JSON record, but they DO NOT gate the exit
+       code — they are surfaced instead as a data point on the nightly
+       trend chart. This keeps flpdf-side regressions from blocking the
+       chart's update loop.
+    1  Real error: log could not be parsed, or parse drift (the count of
+       result lines we extracted disagrees with the qtest-driver "Total
+       tests: N" summary — usually a log-write or regex breakage).
     2  Argument / IO error.
 
 The companion summary file (Markdown) is always written when --summary is
@@ -223,6 +229,7 @@ def judge(
     allowlist: list[AllowlistEntry],
     *,
     include_candidates: bool = True,
+    drift: bool = False,
 ) -> tuple[int, str]:
     """Judge results against the allowlist and render a Markdown summary.
 
@@ -231,6 +238,12 @@ def judge(
     Summary headline, which keeps the counts, regressions, missing entries,
     and verdict but drops the (potentially thousands-long) candidate list.
     The candidate *count* line is unaffected.
+
+    ``drift`` signals that ``parse_log`` detected a mismatch between the
+    number of result lines it extracted and the qtest-driver
+    ``Total tests: N`` summary. It participates in the verdict so the
+    Markdown summary and ``build_metrics``'s record agree — both flip to
+    FAIL on drift even when no regression or missing entry is present.
     """
     b = _bucket(results, allowlist)
     expected_pass = b.expected_pass
@@ -239,7 +252,13 @@ def judge(
     unexpected_pass = b.unexpected_pass
     informational = b.informational
 
-    exit_code = 0 if not regressions and not missing else 1
+    # Verdict is data, not a CI gate: regressions, missing allowlisted
+    # entries, and parse drift flip verdict to FAIL in the summary and the
+    # --metrics record, but the exit code stays 0 so the nightly still
+    # uploads its trend record. Real errors (log parse failure, drift as an
+    # operational signal) are handled in main() and produce exit != 0.
+    verdict = "OK" if not regressions and not missing and not drift else "FAIL"
+    exit_code = 0
 
     lines: list[str] = []
     lines.append("# qtest-summary")
@@ -271,7 +290,6 @@ def judge(
             lines.append(f"- {n}")
         lines.append("")
 
-    verdict = "OK" if exit_code == 0 else "FAIL"
     lines.append(f"**Verdict: {verdict}**")
     lines.append("")
 
@@ -352,7 +370,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(drift_msg, file=sys.stderr)
 
-    exit_code, summary = judge(results, allowlist)
+    drift = drift_msg is not None
+    exit_code, summary = judge(results, allowlist, drift=drift)
     if drift_msg:
         # Make the drift visible in the summary artifact too.
         summary = _with_drift(summary, drift_msg)
@@ -364,7 +383,7 @@ def main(argv: list[str] | None = None) -> int:
         # Headline only: same counts/regressions/missing/verdict and the same
         # drift banner, but without the long candidate enumeration. Appended
         # (GitHub convention) so other steps' summaries are preserved.
-        _, headline = judge(results, allowlist, include_candidates=False)
+        _, headline = judge(results, allowlist, include_candidates=False, drift=drift)
         headline = _with_drift(headline, drift_msg)
         if not headline.endswith("\n"):
             headline += "\n"
