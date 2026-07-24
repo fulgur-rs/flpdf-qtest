@@ -11,11 +11,16 @@
 #
 # Semantics enforced by scripts/verify-allowlist.py:
 #
-#   allowlist PASS    → expected, CI green
-#   allowlist FAIL    → REGRESSION, CI red
-#   allowlist not run → CI red (typo, deleted upstream test, etc.)
-#   non-allowlist PASS → WARN: allowlist-candidate (surfaced in qtest-summary.md)
-#   non-allowlist FAIL → informational, CI green
+#   allowlist PASS    → expected, verdict OK
+#   allowlist FAIL    → REGRESSION, verdict FAIL, plotted on the trend chart
+#   allowlist not run → verdict FAIL (typo, deleted upstream test, etc.)
+#   non-allowlist PASS → allowlist-candidate (surfaced in qtest-summary.md)
+#   non-allowlist FAIL → informational
+#
+# Verdict never gates CI: verify-allowlist.py exits 0 on FAIL as well, so a
+# flpdf-side regression does not block the nightly metrics upload. The FAIL
+# is instead visible on the trend chart as a bump in the `regressions`
+# series. Only real errors (unparseable log, parse drift) exit non-zero.
 #
 # Policy: only add an entry AFTER the implementation in flpdf actually makes
 # it pass. The allowlist is the public record of qpdf-CLI compatibility
