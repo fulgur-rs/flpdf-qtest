@@ -76,7 +76,8 @@ Useful env knobs:
   fail until flpdf grows qpdf-CLI compatibility; useful for surveying.
 - `FLPDF_DIR=/path/to/flpdf` — if either `FLPDF_CLI_BIN` or
   `FLPDF_TEST_COMPARE_BIN` is unset, build both `flpdf` and
-  `flpdf-test-compare` in that checkout and use those.
+  `flpdf-test-compare` in that checkout, using the built path for each
+  binary whose environment variable is unset.
 
 ## Re-vendoring
 
