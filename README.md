@@ -56,13 +56,16 @@ flpdf-qtest/
 ## Running locally
 
 ```bash
-# Build flpdf-cli first (binary is named `flpdf`).
+# Build both binaries the harness needs. Select them by binary name so an
+# flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
-cargo build --release -p flpdf-cli
+cargo build --release --bin flpdf --bin flpdf-test-compare
 
 # Then drive qtest.
 cd /path/to/flpdf-qtest
-FLPDF_CLI_BIN=/path/to/flpdf/target/release/flpdf ./scripts/run.sh
+FLPDF_CLI_BIN=/path/to/flpdf/target/release/flpdf \
+FLPDF_TEST_COMPARE_BIN=/path/to/flpdf/target/release/flpdf-test-compare \
+  ./scripts/run.sh
 ```
 
 Useful env knobs:
@@ -71,8 +74,10 @@ Useful env knobs:
   `.test` stems instead of "everything mentioned in allowlist.txt".
 - `QTEST_FULL=1` — run every `*.test` in `vendor/qpdf-qtest/`. Most will
   fail until flpdf grows qpdf-CLI compatibility; useful for surveying.
-- `FLPDF_DIR=/path/to/flpdf` — if `FLPDF_CLI_BIN` is unset, build
-  flpdf-cli in that checkout.
+- `FLPDF_DIR=/path/to/flpdf` — if either `FLPDF_CLI_BIN` or
+  `FLPDF_TEST_COMPARE_BIN` is unset, build both `flpdf` and
+  `flpdf-test-compare` in that checkout, using the built path for each
+  binary whose environment variable is unset.
 
 ## Re-vendoring
 

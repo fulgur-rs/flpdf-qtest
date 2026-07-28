@@ -24,7 +24,7 @@
 #   FLPDF_DIR      Absolute path to a flpdf checkout. If set and either
 #                  FLPDF_CLI_BIN or FLPDF_TEST_COMPARE_BIN is not, the
 #                  script runs
-#                  `cargo build --release -p flpdf-cli -p flpdf-test-compare`
+#                  `cargo build --release --bin flpdf --bin flpdf-test-compare`
 #                  there and always uses those freshly-built binaries.
 #   QTEST_TESTS    Space-separated list of .test stems to run. If unset,
 #                  every .test stem mentioned in allowlist.txt is run, plus
@@ -53,6 +53,13 @@ cd "${repo_root}"
 # from FLPDF_DIR do it in a single cargo invocation (they share the
 # target dir and flpdf as a dependency; the second binary is essentially
 # free once flpdf-cli's dependency graph is compiled).
+#
+# Select them with `--bin`, not `-p`. The binary names are what this harness
+# actually consumes (FLPDF_CLI_BIN / FLPDF_TEST_COMPARE_BIN point at
+# target/release/<bin>, and shim/qpdf-test-compare execs that path), whereas
+# the package names are an flpdf-internal layout detail that can change
+# without any observable difference here. Keeping this off package names
+# means an flpdf-side crate reorganization cannot break this repository's CI.
 
 need_build=0
 if [[ -z "${FLPDF_CLI_BIN:-}" ]]; then
@@ -80,8 +87,8 @@ if [[ -z "${FLPDF_TEST_COMPARE_BIN:-}" ]]; then
 fi
 
 if [[ ${need_build} -eq 1 ]]; then
-    echo "==> Building flpdf-cli and flpdf-test-compare in ${FLPDF_DIR}"
-    ( cd "${FLPDF_DIR}" && cargo build --release -p flpdf-cli -p flpdf-test-compare )
+    echo "==> Building flpdf and flpdf-test-compare in ${FLPDF_DIR}"
+    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare )
 fi
 
 export FLPDF_CLI_BIN

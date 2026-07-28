@@ -76,9 +76,11 @@ jobs:
       - name: Unit tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
-      - name: Build flpdf-cli and flpdf-test-compare
+      # Select by binary name, not package name: the binary names are what the
+      # harness consumes, while flpdf's crate layout is free to change.
+      - name: Build flpdf and flpdf-test-compare
         working-directory: flpdf
-        run: cargo build --release -p flpdf-cli -p flpdf-test-compare
+        run: cargo build --release --bin flpdf --bin flpdf-test-compare
 
       - name: Run qtest acceptance suite
         env:
