@@ -56,13 +56,16 @@ flpdf-qtest/
 ## Running locally
 
 ```bash
-# Build flpdf-cli first (binary is named `flpdf`).
+# Build both binaries the harness needs. Select them by binary name so an
+# flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
-cargo build --release -p flpdf-cli
+cargo build --release --bin flpdf --bin flpdf-test-compare
 
 # Then drive qtest.
 cd /path/to/flpdf-qtest
-FLPDF_CLI_BIN=/path/to/flpdf/target/release/flpdf ./scripts/run.sh
+FLPDF_CLI_BIN=/path/to/flpdf/target/release/flpdf \
+FLPDF_TEST_COMPARE_BIN=/path/to/flpdf/target/release/flpdf-test-compare \
+  ./scripts/run.sh
 ```
 
 Useful env knobs:
