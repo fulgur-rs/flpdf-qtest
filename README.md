@@ -74,8 +74,9 @@ Useful env knobs:
   `.test` stems instead of "everything mentioned in allowlist.txt".
 - `QTEST_FULL=1` — run every `*.test` in `vendor/qpdf-qtest/`. Most will
   fail until flpdf grows qpdf-CLI compatibility; useful for surveying.
-- `FLPDF_DIR=/path/to/flpdf` — if `FLPDF_CLI_BIN` is unset, build
-  flpdf-cli in that checkout.
+- `FLPDF_DIR=/path/to/flpdf` — if either `FLPDF_CLI_BIN` or
+  `FLPDF_TEST_COMPARE_BIN` is unset, build both `flpdf` and
+  `flpdf-test-compare` in that checkout and use those.
 
 ## Re-vendoring
 
