@@ -278,6 +278,82 @@ class ParseRunTest(unittest.TestCase):
         with self.assertRaisesRegex(qtest_results.ResultError, "description"):
             qtest_results.parse_run(log, xml)
 
+    def test_restores_qtest_utf8_byte_entities_for_umlaut_description(self) -> None:
+        xml = _xml(
+            """
+             <testsuite file="/repo/unicode.test">
+              <testcase testid="unicode 1" description="auto-&#xc3;&#xbc;" outcome="fail"/>
+              <testsummary total-cases="1" passes="0" failures="1"
+               unexpected-passes="0" expected-failures="0"
+               missing-cases="0" extra-cases="0"/>
+             </testsuite>
+            """,
+            total=1,
+            passes=0,
+            failures=1,
+        )
+        log = _tmp(".log", "unicode test 1 (auto-ü) FAILED\n")
+
+        run = qtest_results.parse_run(log, xml)
+
+        self.assertEqual(run.results[0].description, "auto-ü")
+
+    def test_restores_qtest_utf8_byte_entities_for_multibyte_description(self) -> None:
+        xml = _xml(
+            """
+             <testsuite file="/repo/unicode.test">
+              <testcase testid="unicode 1" description="auto-&#xc3;&#xb6;&#xcf;&#x80;" outcome="fail"/>
+              <testsummary total-cases="1" passes="0" failures="1"
+               unexpected-passes="0" expected-failures="0"
+               missing-cases="0" extra-cases="0"/>
+             </testsuite>
+            """,
+            total=1,
+            passes=0,
+            failures=1,
+        )
+        log = _tmp(".log", "unicode test 1 (auto-öπ) FAILED\n")
+
+        run = qtest_results.parse_run(log, xml)
+
+        self.assertEqual(run.results[0].description, "auto-öπ")
+
+    def test_preserves_ascii_natural_unicode_and_invalid_byte_descriptions(self) -> None:
+        xml = _xml(
+            """
+             <testsuite file="/repo/descriptions.test">
+              <testcase testid="ascii 1" description="plain ASCII" outcome="pass"/>
+              <testcase testid="natural 1" description="already ü" outcome="pass"/>
+              <testcase testid="invalid 1" description="invalid &#xff;" outcome="pass"/>
+              <testsummary total-cases="3" passes="3" failures="0"
+               unexpected-passes="0" expected-failures="0"
+               missing-cases="0" extra-cases="0"/>
+             </testsuite>
+            """,
+            total=3,
+            passes=3,
+            failures=0,
+        )
+        log = _tmp(
+            ".log",
+            """
+            ascii  1 (plain ASCII) ... PASSED
+            natural  1 (already ü) ... PASSED
+            invalid  1 (invalid ÿ) ... PASSED
+            """,
+        )
+
+        run = qtest_results.parse_run(log, xml)
+
+        self.assertEqual(
+            {result.id: result.description for result in run.results},
+            {
+                "ascii 1": "plain ASCII",
+                "natural 1": "already ü",
+                "invalid 1": "invalid ÿ",
+            },
+        )
+
     def test_rejects_xml_actual_outcome_mismatch(self) -> None:
         xml = _xml(
             """

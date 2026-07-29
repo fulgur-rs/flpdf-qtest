@@ -194,6 +194,22 @@ def _validate_root_matches_children(
             )
 
 
+def _restore_qtest_utf8_bytes(value: str) -> str:
+    """Undo qtest's XML numeric-entity encoding of individual UTF-8 bytes.
+
+    ``xmlify`` emits one numeric entity per byte >= 0x7f. ElementTree turns
+    those entities into Latin-1 code points, so restore only a sequence that
+    contains such a code point and is a complete, valid UTF-8 byte sequence.
+    Literal Unicode and malformed byte sequences remain unchanged.
+    """
+    if not any("\x80" <= char <= "\xff" for char in value):
+        return value
+    try:
+        return value.encode("latin-1").decode("utf-8")
+    except UnicodeError:
+        return value
+
+
 def _parse_xml_case(case: ET.Element, suite: str) -> _XmlCase:
     testid = case.attrib.get("testid", "")
     category, separator, ordinal_text = testid.rpartition(" ")
@@ -210,7 +226,7 @@ def _parse_xml_case(case: ET.Element, suite: str) -> _XmlCase:
         suite=suite,
         category=category,
         ordinal=int(ordinal_text),
-        description=description,
+        description=_restore_qtest_utf8_bytes(description),
         actual_outcome=actual_outcome,
     )
 
