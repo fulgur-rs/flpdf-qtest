@@ -82,7 +82,7 @@ class _XmlCase:
     category: str
     ordinal: int
     description: str
-    outcome: Outcome
+    actual_outcome: Outcome
 
     @property
     def id(self) -> str:
@@ -94,6 +94,7 @@ class _LogCase:
     category: str
     ordinal: int
     description: str
+    actual_outcome: Outcome
     outcome: Outcome
 
     @property
@@ -118,7 +119,7 @@ def _counters(element: ET.Element, *, scope: str) -> _Counters:
         raise ResultError(f"invalid {scope} summary") from exc
 
 
-def _case_counters(cases: list[_XmlCase]) -> Summary:
+def _case_counters(cases: list[Result]) -> Summary:
     return Summary(
         total=len(cases),
         passes=sum(case.outcome is Outcome.PASS for case in cases),
@@ -132,7 +133,9 @@ def _case_counters(cases: list[_XmlCase]) -> Summary:
     )
 
 
-def _validate_summary(scope: str, counters: _Counters, cases: list[_XmlCase]) -> None:
+def _validate_summary(
+    scope: str, counters: _Counters, cases: list[Result]
+) -> None:
     actual = _case_counters(cases)
     expected = counters.summary
     for name, expected_value, actual_value in (
@@ -174,8 +177,16 @@ def _validate_root_matches_children(
             root.summary.expected_failures,
             child_summary.expected_failures,
         ),
-        ("missing cases", root.missing_cases, sum(child.missing_cases for child in children)),
-        ("extra cases", root.extra_cases, sum(child.extra_cases for child in children)),
+        (
+            "missing cases",
+            root.missing_cases,
+            sum(child.missing_cases for child in children),
+        ),
+        (
+            "extra cases",
+            root.extra_cases,
+            sum(child.extra_cases for child in children),
+        ),
     ):
         if root_value != child_value:
             raise ResultError(
@@ -189,30 +200,33 @@ def _parse_xml_case(case: ET.Element, suite: str) -> _XmlCase:
     if not separator or not category or not ordinal_text.isdecimal():
         raise ResultError(f"invalid testid: {testid!r}")
     try:
-        outcome = Outcome(case.attrib["outcome"])
+        actual_outcome = Outcome(case.attrib["outcome"])
         description = case.attrib["description"]
     except (KeyError, ValueError) as exc:
         raise ResultError(f"invalid testcase {testid!r}") from exc
+    if actual_outcome not in (Outcome.PASS, Outcome.FAIL):
+        raise ResultError(f"invalid actual outcome for {testid!r}")
     return _XmlCase(
         suite=suite,
         category=category,
         ordinal=int(ordinal_text),
         description=description,
-        outcome=outcome,
+        actual_outcome=actual_outcome,
     )
 
 
 def _parse_log_case(match: re.Match[str]) -> _LogCase:
-    outcome = {
-        "PASSED": Outcome.PASS,
-        "FAILED": Outcome.FAIL,
-        "FAILED (exp)": Outcome.EXPECTED_FAIL,
-        "PASSED-UNEXP": Outcome.UNEXPECTED_PASS,
+    actual_outcome, outcome = {
+        "PASSED": (Outcome.PASS, Outcome.PASS),
+        "FAILED": (Outcome.FAIL, Outcome.FAIL),
+        "FAILED (exp)": (Outcome.FAIL, Outcome.EXPECTED_FAIL),
+        "PASSED-UNEXP": (Outcome.PASS, Outcome.UNEXPECTED_PASS),
     }[match["status"]]
     return _LogCase(
         category=match["category"],
         ordinal=int(match["ordinal"]),
         description=match["description"].strip(),
+        actual_outcome=actual_outcome,
         outcome=outcome,
     )
 
@@ -234,7 +248,7 @@ def parse_run(log_path: Path, xml_path: Path) -> RunResults:
     xml_results: dict[str, _XmlCase] = {}
     invalid_ids: set[str] = set()
     invalid_suites: list[str] = []
-    child_counters: list[_Counters] = []
+    child_summaries: list[tuple[str, _Counters, list[_XmlCase]]] = []
 
     for suite in root.findall("testsuite"):
         try:
@@ -250,34 +264,35 @@ def parse_run(log_path: Path, xml_path: Path) -> RunResults:
             continue
         if len(summaries) != 1:
             raise ResultError(f"invalid child summary for {suite_name}")
-        cases = [_parse_xml_case(case, suite_name) for case in suite.findall("./testcase")]
+        cases = [
+            _parse_xml_case(case, suite_name)
+            for case in suite.findall("./testcase")
+        ]
         counters = _counters(summaries[0], scope=f"child {suite_name}")
-        _validate_summary(f"child {suite_name}", counters, cases)
-        child_counters.append(counters)
+        child_summaries.append((suite_name, counters, cases))
         for case in cases:
             if case.id in xml_results:
                 raise ResultError(f"duplicate XML testid: {case.id}")
             xml_results[case.id] = case
 
-    all_cases = list(xml_results.values())
-    _validate_summary("root", root_counters, all_cases)
-    _validate_root_matches_children(root_counters, child_counters)
-
     log_results: dict[str, _LogCase] = {}
-    with log_path.open(encoding="utf-8", errors="replace") as log:
-        for raw_line in log:
-            match = _LOG_RESULT_RE.match(raw_line.rstrip("\n"))
-            if match is None:
-                continue
-            record = _parse_log_case(match)
-            if record.id in invalid_ids and record.id not in xml_results:
-                continue
-            previous = log_results.get(record.id)
-            if previous is not None:
-                if previous != record:
-                    raise ResultError(f"conflicting log identity: {record.id}")
-                continue
-            log_results[record.id] = record
+    try:
+        with log_path.open(encoding="utf-8", errors="replace") as log:
+            for raw_line in log:
+                match = _LOG_RESULT_RE.match(raw_line.rstrip("\n"))
+                if match is None:
+                    continue
+                record = _parse_log_case(match)
+                if record.id in invalid_ids and record.id not in xml_results:
+                    continue
+                previous = log_results.get(record.id)
+                if previous is not None:
+                    if previous != record:
+                        raise ResultError(f"conflicting log identity: {record.id}")
+                    continue
+                log_results[record.id] = record
+    except OSError as exc:
+        raise ResultError(f"unable to read harness log: {exc}") from exc
 
     xml_ids = set(xml_results)
     log_ids = set(log_results)
@@ -294,20 +309,34 @@ def parse_run(log_path: Path, xml_path: Path) -> RunResults:
         log_case = log_results[identity]
         if xml_case.description != log_case.description:
             raise ResultError(f"description mismatch for {identity}")
-        if xml_case.outcome is not log_case.outcome:
-            raise ResultError(f"outcome mismatch for {identity}")
+        if xml_case.actual_outcome is not log_case.actual_outcome:
+            raise ResultError(f"actual outcome mismatch for {identity}")
         parsed.append(
             Result(
                 suite=xml_case.suite,
                 category=xml_case.category,
                 ordinal=xml_case.ordinal,
                 description=xml_case.description,
-                outcome=xml_case.outcome,
+                outcome=log_case.outcome,
             )
         )
 
+    results_by_id = {result.id: result for result in parsed}
+    child_counters: list[_Counters] = []
+    for suite_name, counters, cases in child_summaries:
+        _validate_summary(
+            f"child {suite_name}",
+            counters,
+            [results_by_id[case.id] for case in cases],
+        )
+        child_counters.append(counters)
+    _validate_summary("root", root_counters, parsed)
+    _validate_root_matches_children(root_counters, child_counters)
+
     return RunResults(
-        results=tuple(sorted(parsed, key=lambda result: (result.category, result.ordinal))),
+        results=tuple(
+            sorted(parsed, key=lambda result: (result.category, result.ordinal))
+        ),
         summary=root_counters.summary,
         invalid_suites=tuple(invalid_suites),
     )
