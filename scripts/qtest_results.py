@@ -295,14 +295,13 @@ def _collect_description_provenance(
     xml_path: Path,
     *,
     chunk_size: int = 64 * 1024,
-    scanned_bytes: list[int] | None = None,
 ) -> list[_DescriptionProvenance]:
     """Collect only testcase description metadata without copying the XML file."""
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive")
     cases: list[_DescriptionProvenance] = []
     marker = b"<testcase"
-    marker_position = 0
+    marker_prefix = b""
     tag: bytearray | None = None
     quote: int | None = None
     need_tag_boundary = False
@@ -321,37 +320,53 @@ def _collect_description_provenance(
             )
         )
 
+    def consume_tag(data: bytes, position: int) -> int:
+        nonlocal need_tag_boundary, quote, tag
+        while position < len(data) and tag is not None:
+            byte = data[position]
+            if need_tag_boundary:
+                if byte not in _XML_WHITESPACE + b"/>":
+                    tag = None
+                    quote = None
+                    need_tag_boundary = False
+                    return position
+                need_tag_boundary = False
+            tag.append(byte)
+            position += 1
+            if quote is not None:
+                if byte == quote:
+                    quote = None
+            elif byte in b"\"'":
+                quote = byte
+            elif byte == ord(">"):
+                append_case(tag)
+                tag = None
+        return position
+
     try:
         with xml_path.open("rb") as xml:
             while chunk := xml.read(chunk_size):
-                for byte in chunk:
-                    if scanned_bytes is not None:
-                        scanned_bytes[0] += 1
-                    if tag is None:
-                        if marker_position and byte == marker[marker_position]:
-                            marker_position += 1
-                            if marker_position == len(marker):
-                                tag = bytearray(marker)
-                                marker_position = 0
-                                need_tag_boundary = True
-                            continue
-                        marker_position = 1 if byte == marker[0] else 0
+                position = 0
+                if tag is not None:
+                    position = consume_tag(chunk, position)
+                    if tag is not None:
                         continue
-                    if need_tag_boundary:
-                        if byte not in _XML_WHITESPACE + b"/>":
-                            tag = None
-                            marker_position = 1 if byte == marker[0] else 0
-                            continue
-                        need_tag_boundary = False
-                    tag.append(byte)
-                    if quote is not None:
-                        if byte == quote:
-                            quote = None
-                    elif byte in b"\"'":
-                        quote = byte
-                    elif byte == ord(">"):
-                        append_case(tag)
-                        tag = None
+
+                data = marker_prefix + chunk
+                position = 0 if position == 0 else position + len(marker_prefix)
+                marker_prefix = b""
+                while position < len(data):
+                    start = data.find(marker, position)
+                    if start == -1:
+                        marker_prefix = data[
+                            max(position, len(data) - len(marker) + 1) :
+                        ]
+                        break
+                    tag = bytearray(marker)
+                    need_tag_boundary = True
+                    position = consume_tag(data, start + len(marker))
+                    if tag is not None:
+                        break
     except OSError as exc:
         raise ResultError(f"malformed XML: {exc}") from exc
     return cases

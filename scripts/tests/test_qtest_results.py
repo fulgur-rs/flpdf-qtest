@@ -6,6 +6,7 @@ Run with: python3 -m unittest scripts/tests/test_qtest_results.py
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -458,23 +459,39 @@ class ParseRunTest(unittest.TestCase):
 
         self.assertEqual(provenance, [])
 
-    def test_scans_a_long_quoted_description_linearly(self) -> None:
-        payload = b"x" * (128 * 1024)
+    def test_long_quoted_description_prepass_completes_in_a_subprocess(self) -> None:
+        payload = b"x" * (16 * 1024 * 1024)
         raw = (
             b'<qtest-results><testcase testid="unicode 1" description="'
             + payload
             + b'&#xc3;&#xbc;"/></qtest-results>'
         )
-        xml = _tmp_bytes(".xml", raw)
-        scanned_bytes = [0]
+        code = """
+import importlib.util
+import sys
+from pathlib import Path
 
-        provenance = qtest_results._collect_description_provenance(
-            xml, chunk_size=17, scanned_bytes=scanned_bytes
-        )
+spec = importlib.util.spec_from_file_location("qtest_results_subprocess", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+provenance = module._collect_description_provenance(Path(sys.argv[2]), chunk_size=257)
+assert len(provenance) == 1
+assert provenance[0].testid == "unicode 1"
+assert provenance[0].description.endswith("ü")
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            xml = Path(directory) / "long-tag.xml"
+            xml.write_bytes(raw)
+            completed = subprocess.run(
+                [sys.executable, "-c", code, str(_MODULE_PATH), str(xml)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
 
-        self.assertEqual(scanned_bytes, [len(raw)])
-        self.assertEqual(provenance[0].testid, "unicode 1")
-        self.assertEqual(provenance[0].description, "x" * len(payload) + "ü")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
 
     def test_rejects_description_provenance_identity_mismatch(self) -> None:
         root = ET.fromstring(
