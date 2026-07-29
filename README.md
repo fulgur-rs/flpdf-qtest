@@ -82,14 +82,6 @@ QTEST_FULL=1 \
   ./scripts/run.sh
 ```
 
-`QTEST_FULL=1` is the normal non-empty invocation: it runs the full corpus
-and validates both the acceptance allowlist and the complete parity ledger.
-Every non-empty run must be a full corpus run; a non-empty allowlist without
-`QTEST_FULL=1` is rejected before qtest starts, since a subset cannot validate
-the ledger. With an empty allowlist, leaving `QTEST_FULL` unset performs only
-the supported qtest-driver dry-run; it executes no subtests and therefore has
-no result set or parity-manifest validation.
-
 A full run leaves `harness.log`, `qtest-results.xml`, and `TEST-qtest.xml` in
 the repository root. Keep `harness.log` and `qtest-results.xml` together when
 inspecting or sharing a result: both validators derive their verdicts from
@@ -113,6 +105,16 @@ the `flpdf` repository owns the implementation work those rows reference.
 There is exactly one JSON object for every authoritative qtest subtest, sorted
 by category and numeric ordinal. It is not an allowlist and has no wildcard,
 suite-wide default, or implicit catch-all.
+
+### Full-run scope
+
+`QTEST_FULL=1` is required for every non-empty full corpus run. It runs the
+full corpus and validates both the acceptance allowlist and the complete
+parity ledger. A non-empty allowlist without `QTEST_FULL=1` is rejected before
+qtest starts, since a subset cannot validate the ledger. With an empty
+allowlist, leaving `QTEST_FULL` unset performs only the supported qtest-driver
+dry-run; it executes no subtests and therefore has no subtest result set or
+parity-manifest validation.
 
 ### Identity and fields
 
