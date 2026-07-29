@@ -1,0 +1,313 @@
+"""Parse qtest's authoritative XML result set and matching harness log."""
+
+from __future__ import annotations
+
+import re
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+
+
+class ResultError(ValueError):
+    pass
+
+
+class Outcome(str, Enum):
+    PASS = "pass"
+    FAIL = "fail"
+    UNEXPECTED_PASS = "unexpected-pass"
+    EXPECTED_FAIL = "expected-fail"
+
+
+@dataclass(frozen=True)
+class Result:
+    suite: str
+    category: str
+    ordinal: int
+    description: str
+    outcome: Outcome
+
+    @property
+    def id(self) -> str:
+        return f"{self.category} {self.ordinal}"
+
+    @property
+    def test(self) -> str:
+        return self.category
+
+    @property
+    def subtest(self) -> str:
+        return self.description
+
+    @property
+    def passed(self) -> bool:
+        return self.outcome in (Outcome.PASS, Outcome.UNEXPECTED_PASS)
+
+
+@dataclass(frozen=True)
+class Summary:
+    total: int
+    passes: int
+    failures: int
+    unexpected_passes: int
+    expected_failures: int
+
+
+@dataclass(frozen=True)
+class RunResults:
+    results: tuple[Result, ...]
+    summary: Summary
+    invalid_suites: tuple[str, ...]
+
+
+_LOG_RESULT_RE = re.compile(
+    r"^(?P<category>[A-Za-z0-9][A-Za-z0-9_+.-]*)"
+    r"(?:\s+test)?\s+(?P<ordinal>\d+)\s+"
+    r"\((?P<description>.+)\)(?:\s+\.\.\.)?\s+"
+    r"(?P<status>PASSED-UNEXP|PASSED|FAILED \(exp\)|FAILED)\s*$"
+)
+
+
+@dataclass(frozen=True)
+class _Counters:
+    summary: Summary
+    missing_cases: int
+    extra_cases: int
+
+
+@dataclass(frozen=True)
+class _XmlCase:
+    suite: str
+    category: str
+    ordinal: int
+    description: str
+    outcome: Outcome
+
+    @property
+    def id(self) -> str:
+        return f"{self.category} {self.ordinal}"
+
+
+@dataclass(frozen=True)
+class _LogCase:
+    category: str
+    ordinal: int
+    description: str
+    outcome: Outcome
+
+    @property
+    def id(self) -> str:
+        return f"{self.category} {self.ordinal}"
+
+
+def _counters(element: ET.Element, *, scope: str) -> _Counters:
+    try:
+        return _Counters(
+            summary=Summary(
+                total=int(element.attrib["total-cases"]),
+                passes=int(element.attrib["passes"]),
+                failures=int(element.attrib["failures"]),
+                unexpected_passes=int(element.attrib["unexpected-passes"]),
+                expected_failures=int(element.attrib["expected-failures"]),
+            ),
+            missing_cases=int(element.attrib["missing-cases"]),
+            extra_cases=int(element.attrib["extra-cases"]),
+        )
+    except (KeyError, ValueError) as exc:
+        raise ResultError(f"invalid {scope} summary") from exc
+
+
+def _case_counters(cases: list[_XmlCase]) -> Summary:
+    return Summary(
+        total=len(cases),
+        passes=sum(case.outcome is Outcome.PASS for case in cases),
+        failures=sum(case.outcome is Outcome.FAIL for case in cases),
+        unexpected_passes=sum(
+            case.outcome is Outcome.UNEXPECTED_PASS for case in cases
+        ),
+        expected_failures=sum(
+            case.outcome is Outcome.EXPECTED_FAIL for case in cases
+        ),
+    )
+
+
+def _validate_summary(scope: str, counters: _Counters, cases: list[_XmlCase]) -> None:
+    actual = _case_counters(cases)
+    expected = counters.summary
+    for name, expected_value, actual_value in (
+        ("total", expected.total, actual.total),
+        ("passes", expected.passes, actual.passes),
+        ("failures", expected.failures, actual.failures),
+        ("unexpected passes", expected.unexpected_passes, actual.unexpected_passes),
+        ("expected failures", expected.expected_failures, actual.expected_failures),
+    ):
+        if expected_value != actual_value:
+            raise ResultError(
+                f"{scope} {name} mismatch: summary {expected_value}, cases {actual_value}"
+            )
+
+
+def _validate_root_matches_children(
+    root: _Counters, children: list[_Counters]
+) -> None:
+    child_summary = Summary(
+        total=sum(child.summary.total for child in children),
+        passes=sum(child.summary.passes for child in children),
+        failures=sum(child.summary.failures for child in children),
+        unexpected_passes=sum(
+            child.summary.unexpected_passes for child in children
+        ),
+        expected_failures=sum(child.summary.expected_failures for child in children),
+    )
+    for name, root_value, child_value in (
+        ("total", root.summary.total, child_summary.total),
+        ("passes", root.summary.passes, child_summary.passes),
+        ("failures", root.summary.failures, child_summary.failures),
+        (
+            "unexpected passes",
+            root.summary.unexpected_passes,
+            child_summary.unexpected_passes,
+        ),
+        (
+            "expected failures",
+            root.summary.expected_failures,
+            child_summary.expected_failures,
+        ),
+        ("missing cases", root.missing_cases, sum(child.missing_cases for child in children)),
+        ("extra cases", root.extra_cases, sum(child.extra_cases for child in children)),
+    ):
+        if root_value != child_value:
+            raise ResultError(
+                f"root {name} mismatch: root {root_value}, children {child_value}"
+            )
+
+
+def _parse_xml_case(case: ET.Element, suite: str) -> _XmlCase:
+    testid = case.attrib.get("testid", "")
+    category, separator, ordinal_text = testid.rpartition(" ")
+    if not separator or not category or not ordinal_text.isdecimal():
+        raise ResultError(f"invalid testid: {testid!r}")
+    try:
+        outcome = Outcome(case.attrib["outcome"])
+        description = case.attrib["description"]
+    except (KeyError, ValueError) as exc:
+        raise ResultError(f"invalid testcase {testid!r}") from exc
+    return _XmlCase(
+        suite=suite,
+        category=category,
+        ordinal=int(ordinal_text),
+        description=description,
+        outcome=outcome,
+    )
+
+
+def _parse_log_case(match: re.Match[str]) -> _LogCase:
+    outcome = {
+        "PASSED": Outcome.PASS,
+        "FAILED": Outcome.FAIL,
+        "FAILED (exp)": Outcome.EXPECTED_FAIL,
+        "PASSED-UNEXP": Outcome.UNEXPECTED_PASS,
+    }[match["status"]]
+    return _LogCase(
+        category=match["category"],
+        ordinal=int(match["ordinal"]),
+        description=match["description"].strip(),
+        outcome=outcome,
+    )
+
+
+def parse_run(log_path: Path, xml_path: Path) -> RunResults:
+    """Join the harness log to the XML result set from one qtest invocation."""
+    try:
+        root = ET.parse(xml_path).getroot()
+    except (ET.ParseError, OSError) as exc:
+        raise ResultError(f"malformed XML: {exc}") from exc
+    if root.tag != "qtest-results":
+        raise ResultError(f"malformed XML: unexpected root {root.tag!r}")
+
+    root_summaries = root.findall("./testsummary")
+    if len(root_summaries) != 1:
+        raise ResultError("invalid root summary")
+    root_counters = _counters(root_summaries[0], scope="root")
+
+    xml_results: dict[str, _XmlCase] = {}
+    invalid_ids: set[str] = set()
+    invalid_suites: list[str] = []
+    child_counters: list[_Counters] = []
+
+    for suite in root.findall("testsuite"):
+        try:
+            suite_name = Path(suite.attrib["file"]).stem
+        except KeyError as exc:
+            raise ResultError("invalid testsuite") from exc
+        summaries = suite.findall("./testsummary")
+        if not summaries:
+            invalid_suites.append(suite_name)
+            invalid_ids.update(
+                case.attrib.get("testid", "") for case in suite.findall("./testcase")
+            )
+            continue
+        if len(summaries) != 1:
+            raise ResultError(f"invalid child summary for {suite_name}")
+        cases = [_parse_xml_case(case, suite_name) for case in suite.findall("./testcase")]
+        counters = _counters(summaries[0], scope=f"child {suite_name}")
+        _validate_summary(f"child {suite_name}", counters, cases)
+        child_counters.append(counters)
+        for case in cases:
+            if case.id in xml_results:
+                raise ResultError(f"duplicate XML testid: {case.id}")
+            xml_results[case.id] = case
+
+    all_cases = list(xml_results.values())
+    _validate_summary("root", root_counters, all_cases)
+    _validate_root_matches_children(root_counters, child_counters)
+
+    log_results: dict[str, _LogCase] = {}
+    with log_path.open(encoding="utf-8", errors="replace") as log:
+        for raw_line in log:
+            match = _LOG_RESULT_RE.match(raw_line.rstrip("\n"))
+            if match is None:
+                continue
+            record = _parse_log_case(match)
+            if record.id in invalid_ids and record.id not in xml_results:
+                continue
+            previous = log_results.get(record.id)
+            if previous is not None:
+                if previous != record:
+                    raise ResultError(f"conflicting log identity: {record.id}")
+                continue
+            log_results[record.id] = record
+
+    xml_ids = set(xml_results)
+    log_ids = set(log_results)
+    if xml_ids != log_ids:
+        xml_only = sorted(xml_ids - log_ids)
+        log_only = sorted(log_ids - xml_ids)
+        raise ResultError(
+            "XML/log identity drift: "
+            f"XML-only={xml_only!r}, log-only={log_only!r}"
+        )
+
+    parsed: list[Result] = []
+    for identity, xml_case in xml_results.items():
+        log_case = log_results[identity]
+        if xml_case.description != log_case.description:
+            raise ResultError(f"description mismatch for {identity}")
+        if xml_case.outcome is not log_case.outcome:
+            raise ResultError(f"outcome mismatch for {identity}")
+        parsed.append(
+            Result(
+                suite=xml_case.suite,
+                category=xml_case.category,
+                ordinal=xml_case.ordinal,
+                description=xml_case.description,
+                outcome=xml_case.outcome,
+            )
+        )
+
+    return RunResults(
+        results=tuple(sorted(parsed, key=lambda result: (result.category, result.ordinal))),
+        summary=root_counters.summary,
+        invalid_suites=tuple(invalid_suites),
+    )
