@@ -29,8 +29,20 @@ class RunContractTest(unittest.TestCase):
 
     def test_nonempty_run_requires_qtest_result_xml_before_verification(self) -> None:
         self.assertIn('qtest_xml="${repo_root}/qtest-results.xml"', self.script)
+        run_section = self.script.split(
+            "# --- run qtest-driver", maxsplit=1
+        )[1].split("# --- verify against allowlist", maxsplit=1)[0]
+        empty_run, nonempty_run = run_section.split("else", maxsplit=1)
+        guard = 'if [[ ! -f "${qtest_xml}" ]]; then'
+
+        self.assertNotIn(guard, empty_run)
+        self.assertIn(guard, nonempty_run)
+        self.assertLess(
+            nonempty_run.index('perl "${repo_root}/vendor/qtest/bin/qtest-driver"'),
+            nonempty_run.index(guard),
+        )
         self.assertRegex(
-            self.script,
+            nonempty_run,
             r'if \[\[ ! -f "\$\{qtest_xml\}" \]\]; then\s+'
             r'echo "run\.sh: qtest results XML not found: \$\{qtest_xml\}" >&2\s+'
             r'exit 1\s+fi',
