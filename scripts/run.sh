@@ -30,9 +30,6 @@
 #                  FLPDF_TEST_DRIVER_BIN is not, the script runs
 #                  `cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver`
 #                  there and always uses those freshly-built binaries.
-#   QTEST_TESTS    Space-separated list of .test stems to run. If unset,
-#                  every .test stem mentioned in allowlist.txt is run, plus
-#                  any --full=1 sentinel inclusion.
 #   QTEST_FULL     When "1", run every *.test in vendor/qpdf-qtest/.
 #
 # Outputs:
@@ -151,9 +148,9 @@ if [[ "${QTEST_FULL:-0}" == "1" ]]; then
         find "${repo_root}/vendor/qpdf-qtest" -maxdepth 1 -name '*.test' \
             -printf '%f\n' | sed 's/\.test$//' | sort -u
     )
-elif [[ -n "${QTEST_TESTS:-}" ]]; then
-    read -r -a stems <<< "${QTEST_TESTS}"
 else
+    # This read distinguishes the supported empty-allowlist bring-up probe
+    # from a nonempty partial survey, which is rejected before execution.
     mapfile -t stems < <(
         awk '
             { sub(/#.*/,""); gsub(/^[[:space:]]+|[[:space:]]+$/,""); }
@@ -177,10 +174,9 @@ rm -f "${qtest_log}" "${qtest_xml}" "${qtest_junit}" "${summary}" "${metrics}" "
 : > "${log}"
 
 if [[ ${#stems[@]} -eq 0 ]]; then
-    # Empty allowlist + no explicit TESTS — we still want CI to assert that
-    # the harness boots, so dry-run qtest-driver with --version and write
-    # an empty results section.
-    echo "==> Allowlist is empty and no QTEST_TESTS set."
+    # Empty allowlist — we still want CI to assert that the harness boots, so
+    # dry-run qtest-driver with --version and write an empty results section.
+    echo "==> Allowlist is empty."
     {
         echo "qtest-driver dry run (allowlist empty)"
         perl "${repo_root}/vendor/qtest/bin/qtest-driver" --version

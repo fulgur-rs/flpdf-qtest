@@ -45,6 +45,10 @@ class RunExecutionTest(unittest.TestCase):
         )
         (self.repo / "parity").mkdir()
         (self.repo / "parity" / "qtest-11.9.0.jsonl").write_text(
+            '{"id":"outside 1","suite":"outside","category":"outside",'
+            '"ordinal":1,"description":"not allowlisted","state":"passing",'
+            '"rationale":null,"owner":null,"bead":null,'
+            '"replacement_ref":null}\n'
             '{"id":"valid 1","suite":"valid","category":"valid",'
             '"ordinal":1,"description":"kept","state":"passing",'
             '"rationale":null,"owner":null,"bead":null,'
@@ -52,6 +56,7 @@ class RunExecutionTest(unittest.TestCase):
             encoding="utf-8",
         )
         (self.repo / "vendor" / "qpdf-qtest" / "valid.test").touch()
+        (self.repo / "vendor" / "qpdf-qtest" / "outside.test").touch()
 
         fake_binary = self.repo / "fake-flpdf"
         fake_binary.write_text("#!/usr/bin/env sh\nexit 0\n", encoding="utf-8")
@@ -75,6 +80,10 @@ class RunExecutionTest(unittest.TestCase):
                     print "driver stopped before XML\n";
                     exit 1;
                 }
+
+                open my $tests, ">", "received-tests.txt" or die $!;
+                print {$tests} ($ENV{"TESTS"} // "");
+                close $tests;
 
                 open my $qtest_log, ">", "qtest.log" or die $!;
                 print {$qtest_log} "fresh qtest log: $mode\n";
@@ -105,17 +114,24 @@ class RunExecutionTest(unittest.TestCase):
                     print {$xml} <<'XML';
                 <?xml version="1.0"?>
                 <qtest-results version="1">
+                 <testsuite file="/repo/outside.test">
+                  <testcase testid="outside 1" description="not allowlisted" outcome="pass"/>
+                  <testsummary total-cases="1" passes="1" failures="0"
+                   unexpected-passes="0" expected-failures="0"
+                   missing-cases="0" extra-cases="0"/>
+                 </testsuite>
                  <testsuite file="/repo/valid.test">
                   <testcase testid="valid 1" description="kept" outcome="pass"/>
                   <testsummary total-cases="1" passes="1" failures="0"
                    unexpected-passes="0" expected-failures="0"
                    missing-cases="0" extra-cases="0"/>
                  </testsuite>
-                 <testsummary total-cases="1" passes="1" failures="0"
+                 <testsummary total-cases="2" passes="2" failures="0"
                   unexpected-passes="0" expected-failures="0"
                   missing-cases="0" extra-cases="0"/>
                 </qtest-results>
                 XML
+                    print "outside  1 (not allowlisted) ... PASSED\n";
                     print "valid  1 (kept) ... PASSED\n";
                 } else {
                     die "unexpected FAKE_QTEST_MODE: $mode";
@@ -245,6 +261,10 @@ class RunExecutionTest(unittest.TestCase):
         self.assertIn(_SENTINEL, summary)
         self.assertIn("# qtest-summary", summary)
         self.assertIn("# qtest parity manifest", summary)
+        self.assertEqual(
+            (self.repo / "received-tests.txt").read_text(encoding="utf-8"),
+            "outside valid",
+        )
         self._assert_no_sentinel()
 
     def test_partial_survey_fails_before_driver_or_manifest_validation(self) -> None:

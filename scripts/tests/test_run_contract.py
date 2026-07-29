@@ -45,6 +45,9 @@ class RunContractTest(unittest.TestCase):
             r'exit 2\s+fi',
         )
 
+    def test_runner_exposes_no_subset_selection_interface(self) -> None:
+        self.assertNotIn("QTEST_TESTS", self.script)
+
     def test_nonempty_run_requires_qtest_result_xml_before_verification(self) -> None:
         self.assertIn('qtest_xml="${repo_root}/qtest-results.xml"', self.script)
         run_section = self.script.split(
