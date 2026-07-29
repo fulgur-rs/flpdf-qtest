@@ -260,20 +260,6 @@ def _restore_qtest_description(value: bytes) -> str | None:
     return "".join(restored)
 
 
-def _testcase_tag_end(data: bytes, start: int) -> int | None:
-    quote: int | None = None
-    for position in range(start + len(b"<testcase"), len(data)):
-        byte = data[position]
-        if quote is not None:
-            if byte == quote:
-                quote = None
-        elif byte in b"\"'":
-            quote = byte
-        elif byte == ord(">"):
-            return position
-    return None
-
-
 def _testcase_attributes(tag: bytes) -> dict[bytes, bytes]:
     position = len(b"<testcase")
     attributes: dict[bytes, bytes] = {}
@@ -306,50 +292,66 @@ def _testcase_attributes(tag: bytes) -> dict[bytes, bytes]:
 
 
 def _collect_description_provenance(
-    xml_path: Path, *, chunk_size: int = 64 * 1024
+    xml_path: Path,
+    *,
+    chunk_size: int = 64 * 1024,
+    scanned_bytes: list[int] | None = None,
 ) -> list[_DescriptionProvenance]:
     """Collect only testcase description metadata without copying the XML file."""
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive")
     cases: list[_DescriptionProvenance] = []
     marker = b"<testcase"
-    buffer = b""
+    marker_position = 0
+    tag: bytearray | None = None
+    quote: int | None = None
+    need_tag_boundary = False
+
+    def append_case(raw_tag: bytearray) -> None:
+        attributes = _testcase_attributes(bytes(raw_tag))
+        raw_description = attributes.get(b"description")
+        cases.append(
+            _DescriptionProvenance(
+                testid=_decode_xml_attribute(attributes.get(b"testid", b"")),
+                description=(
+                    _restore_qtest_description(raw_description)
+                    if raw_description is not None
+                    else None
+                ),
+            )
+        )
+
     try:
         with xml_path.open("rb") as xml:
             while chunk := xml.read(chunk_size):
-                buffer += chunk
-                position = 0
-                while True:
-                    start = buffer.find(marker, position)
-                    if start == -1:
-                        buffer = buffer[-(len(marker) - 1) :]
-                        break
-                    after_marker = start + len(marker)
-                    if after_marker == len(buffer):
-                        buffer = buffer[start:]
-                        break
-                    if buffer[after_marker] not in _XML_WHITESPACE + b"/>":
-                        position = after_marker
+                for byte in chunk:
+                    if scanned_bytes is not None:
+                        scanned_bytes[0] += 1
+                    if tag is None:
+                        if marker_position and byte == marker[marker_position]:
+                            marker_position += 1
+                            if marker_position == len(marker):
+                                tag = bytearray(marker)
+                                marker_position = 0
+                                need_tag_boundary = True
+                            continue
+                        marker_position = 1 if byte == marker[0] else 0
                         continue
-                    end = _testcase_tag_end(buffer, start)
-                    if end is None:
-                        buffer = buffer[start:]
-                        break
-                    attributes = _testcase_attributes(buffer[start : end + 1])
-                    raw_description = attributes.get(b"description")
-                    cases.append(
-                        _DescriptionProvenance(
-                            testid=_decode_xml_attribute(
-                                attributes.get(b"testid", b"")
-                            ),
-                            description=(
-                                _restore_qtest_description(raw_description)
-                                if raw_description is not None
-                                else None
-                            ),
-                        )
-                    )
-                    position = end + 1
+                    if need_tag_boundary:
+                        if byte not in _XML_WHITESPACE + b"/>":
+                            tag = None
+                            marker_position = 1 if byte == marker[0] else 0
+                            continue
+                        need_tag_boundary = False
+                    tag.append(byte)
+                    if quote is not None:
+                        if byte == quote:
+                            quote = None
+                    elif byte in b"\"'":
+                        quote = byte
+                    elif byte == ord(">"):
+                        append_case(tag)
+                        tag = None
     except OSError as exc:
         raise ResultError(f"malformed XML: {exc}") from exc
     return cases

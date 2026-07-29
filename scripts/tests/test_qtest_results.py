@@ -425,6 +425,57 @@ class ParseRunTest(unittest.TestCase):
             ],
         )
 
+    def test_collects_multiple_testcase_tags_in_order(self) -> None:
+        raw = (
+            b'<qtest-results><testcase testid="first 1" '
+            b'description="&#xc3;&#xbc;"/><testcase testid="second 2" '
+            b'description="&#xc3;&#xb6;"/></qtest-results>'
+        )
+        xml = _tmp_bytes(".xml", raw)
+
+        provenance = qtest_results._collect_description_provenance(xml, chunk_size=11)
+
+        self.assertEqual(
+            provenance,
+            [
+                qtest_results._DescriptionProvenance(
+                    testid="first 1", description="ü"
+                ),
+                qtest_results._DescriptionProvenance(
+                    testid="second 2", description="ö"
+                ),
+            ],
+        )
+
+    def test_ignores_eof_unfinished_testcase_tag_until_xml_parse(self) -> None:
+        xml = _tmp_bytes(
+            ".xml",
+            b'<qtest-results><testcase testid="unicode 1" '
+            b'description="&#xc3;&#xbc;"',
+        )
+
+        provenance = qtest_results._collect_description_provenance(xml, chunk_size=7)
+
+        self.assertEqual(provenance, [])
+
+    def test_scans_a_long_quoted_description_linearly(self) -> None:
+        payload = b"x" * (128 * 1024)
+        raw = (
+            b'<qtest-results><testcase testid="unicode 1" description="'
+            + payload
+            + b'&#xc3;&#xbc;"/></qtest-results>'
+        )
+        xml = _tmp_bytes(".xml", raw)
+        scanned_bytes = [0]
+
+        provenance = qtest_results._collect_description_provenance(
+            xml, chunk_size=17, scanned_bytes=scanned_bytes
+        )
+
+        self.assertEqual(scanned_bytes, [len(raw)])
+        self.assertEqual(provenance[0].testid, "unicode 1")
+        self.assertEqual(provenance[0].description, "x" * len(payload) + "ü")
+
     def test_rejects_description_provenance_identity_mismatch(self) -> None:
         root = ET.fromstring(
             '<qtest-results><testcase testid="actual 1" description="plain"/>'
