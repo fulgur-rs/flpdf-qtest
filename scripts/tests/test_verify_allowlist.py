@@ -9,12 +9,14 @@ import contextlib
 import importlib.util
 import io
 import json
+import runpy
 import sys
 import tempfile
 import textwrap
 import unittest
 from collections import defaultdict
 from pathlib import Path
+from unittest import mock
 from xml.sax.saxutils import escape
 
 _HERE = Path(__file__).resolve().parent
@@ -183,6 +185,27 @@ class JudgeTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("Expected pass (allowlist PASS): **2**", summary)
 
+    def test_allowlist_parser_ignores_blank_and_comment_only_lines(self) -> None:
+        entries = verify_allowlist.parse_allowlist(
+            _tmp(
+                """
+                # comment
+
+                arg-parsing:required argument  # trailing comment
+                """
+            )
+        )
+
+        self.assertEqual(
+            entries,
+            [
+                verify_allowlist.AllowlistEntry(
+                    test="arg-parsing",
+                    subtest="required argument",
+                )
+            ],
+        )
+
     def test_unexpected_pass_is_candidate(self) -> None:
         exit_code, summary = self._judge([_result("arg-parsing", "surprise", True)], "")
         self.assertEqual(exit_code, 0)
@@ -286,6 +309,7 @@ class HeadlineSummaryTest(unittest.TestCase):
         _exit, summary = self._judge([_result("arg-parsing", "surprise", True)], "")
         self.assertIn("## Allowlist candidates", summary)
         self.assertIn("arg-parsing:surprise", summary)
+        self.assertTrue(summary.endswith("\n"))
 
 
 class MainTest(unittest.TestCase):
@@ -317,13 +341,49 @@ class MainTest(unittest.TestCase):
         # A suite without its own summary is excluded by the shared parser.
         # The old log-only parser incorrectly accepted this as a passing entry.
         _rc, full, _step, _metrics = self._run(
-            [],
+            [_result("valid", "kept", True)],
             "invalid:partial\n",
             invalid=[_result("invalid", "partial", True)],
         )
         self.assertIn("## Missing", full)
         self.assertIn("invalid:partial", full)
         self.assertIn("**Verdict: FAIL**", full)
+
+    def test_zero_authoritative_results_is_an_operational_error(self) -> None:
+        log, xml = _paired_artifacts(
+            [],
+            invalid=[_result("invalid", "partial", True)],
+        )
+        allowlist = _tmp("invalid:partial\n")
+        summary = _tmp("")
+        metrics = _tmp("")
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        with (
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            rc = verify_allowlist.main(
+                [
+                    str(log),
+                    str(xml),
+                    str(allowlist),
+                    "--summary",
+                    str(summary),
+                    "--metrics",
+                    str(metrics),
+                ]
+            )
+
+        self.assertEqual(rc, 1)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn(
+            "verify-allowlist: no authoritative subtest results",
+            stderr.getvalue(),
+        )
+        self.assertEqual(summary.read_text(encoding="utf-8"), "")
+        self.assertEqual(metrics.read_text(encoding="utf-8"), "")
 
     def test_parser_error_is_prefixed_and_does_not_emit_summary(self) -> None:
         log = _tmp("sample 1 (ok) ... PASSED\n", suffix=".log")
@@ -338,6 +398,46 @@ class MainTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("verify-allowlist: malformed XML", stderr.getvalue())
         self.assertEqual(summary.read_text(encoding="utf-8"), "")
+
+    def test_missing_input_artifacts_return_argument_io_error(self) -> None:
+        log, xml = _paired_artifacts([_result("sample", "ok", True)])
+        allowlist = _tmp("sample:ok\n")
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "missing"
+            cases = (
+                ([missing, xml, allowlist], "log not found"),
+                ([log, missing, allowlist], "XML not found"),
+                ([log, xml, missing], "allowlist not found"),
+            )
+            for paths, diagnostic in cases:
+                with self.subTest(diagnostic=diagnostic):
+                    stdout = io.StringIO()
+                    stderr = io.StringIO()
+                    with (
+                        contextlib.redirect_stdout(stdout),
+                        contextlib.redirect_stderr(stderr),
+                    ):
+                        rc = verify_allowlist.main([str(path) for path in paths])
+                    self.assertEqual(rc, 2)
+                    self.assertEqual(stdout.getvalue(), "")
+                    self.assertIn(f"verify-allowlist: {diagnostic}", stderr.getvalue())
+
+    def test_script_entrypoint_exits_with_main_result(self) -> None:
+        log, xml = _paired_artifacts([_result("sample", "ok", True)])
+        allowlist = _tmp("sample:ok\n")
+
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [str(_VERIFY_PATH), str(log), str(xml), str(allowlist)],
+            ),
+            contextlib.redirect_stdout(io.StringIO()),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            runpy.run_path(str(_VERIFY_PATH), run_name="__main__")
+
+        self.assertEqual(raised.exception.code, 0)
 
     def test_step_summary_is_headline_full_summary_is_complete(self) -> None:
         _rc, full, step, _metrics = self._run(

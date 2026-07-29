@@ -48,6 +48,19 @@ class RunContractTest(unittest.TestCase):
             r'exit 1\s+fi',
         )
 
+    def test_generated_result_artifacts_are_cleared_before_driver_execution(self) -> None:
+        run_section = self.script.split(
+            "# --- run qtest-driver", maxsplit=1
+        )[1].split("# --- verify against allowlist", maxsplit=1)[0]
+        driver = 'perl "${repo_root}/vendor/qtest/bin/qtest-driver"'
+        clear = (
+            'rm -f "${qtest_xml}" "${qtest_junit}" '
+            '"${summary}" "${metrics}"'
+        )
+
+        self.assertIn(clear, run_section)
+        self.assertLess(run_section.index(clear), run_section.index(driver))
+
     def test_verifier_keeps_summary_and_metrics_outputs(self) -> None:
         self.assertRegex(
             self.script,
@@ -67,7 +80,3 @@ class RunContractTest(unittest.TestCase):
             r'harness\.log\s+qtest\.log\s+qtest-results\.xml\s+'
             r'TEST-qtest\.xml\s+qtest-summary\.md\s+qtest-metrics\.jsonl',
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

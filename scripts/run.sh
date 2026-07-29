@@ -165,6 +165,10 @@ fi
 
 log="${repo_root}/harness.log"
 qtest_xml="${repo_root}/qtest-results.xml"
+qtest_junit="${repo_root}/TEST-qtest.xml"
+summary="${repo_root}/qtest-summary.md"
+metrics="${repo_root}/qtest-metrics.jsonl"
+rm -f "${qtest_xml}" "${qtest_junit}" "${summary}" "${metrics}"
 : > "${log}"
 
 if [[ ${#stems[@]} -eq 0 ]]; then
@@ -192,8 +196,6 @@ else
 fi
 
 # --- verify against allowlist -----------------------------------------------
-
-summary="${repo_root}/qtest-summary.md"
 
 if [[ ${#stems[@]} -eq 0 ]]; then
     # No subtest lines will be present; emit a minimal summary directly.
@@ -232,7 +234,6 @@ fi
 # Always emit a single metrics line for this run (harmless locally). CI decides
 # whether to persist it to the metrics-data history. FLPDF_COMMIT is the SHA of
 # the flpdf checkout under test, supplied by CI; empty locally.
-metrics="${repo_root}/qtest-metrics.jsonl"
 : > "${metrics}"
 verify_args+=(
     --metrics "${metrics}"

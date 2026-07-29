@@ -14,8 +14,10 @@ Exit codes:
     1  Real error: qtest result artifacts could not be parsed or reconciled.
     2  Argument / IO error.
 
-The companion summary file (Markdown) is always written when --summary is
-given, regardless of exit code, so CI can upload it as an artifact.
+The companion summary and metrics outputs are written only after the paired
+artifacts have been reconciled to a non-empty authoritative result set.
+Operational errors are diagnosed on stderr and leave those outputs unwritten;
+the runner clears stale generated artifacts before invoking this command.
 """
 
 from __future__ import annotations
@@ -266,6 +268,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         run = parse_run(args.log, args.xml)
+        if not run.results:
+            raise ResultError("no authoritative subtest results")
     except ResultError as exc:
         print(f"verify-allowlist: {exc}", file=sys.stderr)
         return 1
@@ -280,8 +284,6 @@ def main(argv: list[str] | None = None) -> int:
         # the long candidate enumeration. Appended (GitHub convention) so
         # other steps' summaries are preserved.
         _, headline = judge(results, allowlist, include_candidates=False)
-        if not headline.endswith("\n"):
-            headline += "\n"
         # If a prior step left content without a trailing newline, separate it
         # so our `# qtest-summary` header starts on its own line.
         if args.step_summary.exists() and args.step_summary.stat().st_size > 0:
