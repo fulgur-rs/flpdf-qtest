@@ -19,12 +19,16 @@
 #                           binary (the Rust port of qpdf's compare-for-test,
 #                           used by shim/qpdf-test-compare). Same resolution
 #                           order as FLPDF_CLI_BIN.
+#   FLPDF_TEST_DRIVER_BIN   Absolute path to a built flpdf-test-driver
+#                           binary (the Rust port of qpdf's test_driver.cc,
+#                           used by shim/test_driver). Same resolution
+#                           order as FLPDF_CLI_BIN.
 #
 # Optional env:
-#   FLPDF_DIR      Absolute path to a flpdf checkout. If set and either
-#                  FLPDF_CLI_BIN or FLPDF_TEST_COMPARE_BIN is not, the
-#                  script runs
-#                  `cargo build --release --bin flpdf --bin flpdf-test-compare`
+#   FLPDF_DIR      Absolute path to a flpdf checkout. If set and any of
+#                  FLPDF_CLI_BIN / FLPDF_TEST_COMPARE_BIN /
+#                  FLPDF_TEST_DRIVER_BIN is not, the script runs
+#                  `cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver`
 #                  there and always uses those freshly-built binaries.
 #   QTEST_TESTS    Space-separated list of .test stems to run. If unset,
 #                  every .test stem mentioned in allowlist.txt is run, plus
@@ -86,15 +90,28 @@ if [[ -z "${FLPDF_TEST_COMPARE_BIN:-}" ]]; then
     fi
 fi
 
+if [[ -z "${FLPDF_TEST_DRIVER_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_DRIVER_BIN="${FLPDF_DIR}/target/release/flpdf-test-driver"
+    elif [[ -x "${repo_root}/flpdf/target/release/flpdf-test-driver" ]]; then
+        FLPDF_TEST_DRIVER_BIN="${repo_root}/flpdf/target/release/flpdf-test-driver"
+    else
+        echo "run.sh: cannot locate flpdf-test-driver (set FLPDF_TEST_DRIVER_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
+fi
+
 if [[ ${need_build} -eq 1 ]]; then
-    echo "==> Building flpdf and flpdf-test-compare in ${FLPDF_DIR}"
-    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare )
+    echo "==> Building flpdf, flpdf-test-compare and flpdf-test-driver in ${FLPDF_DIR}"
+    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver )
 fi
 
 export FLPDF_CLI_BIN
 export FLPDF_TEST_COMPARE_BIN
+export FLPDF_TEST_DRIVER_BIN
 
-for bin in "${FLPDF_CLI_BIN}" "${FLPDF_TEST_COMPARE_BIN}"; do
+for bin in "${FLPDF_CLI_BIN}" "${FLPDF_TEST_COMPARE_BIN}" "${FLPDF_TEST_DRIVER_BIN}"; do
     if [[ ! -x "${bin}" ]]; then
         echo "run.sh: ${bin} is not executable" >&2
         exit 2
