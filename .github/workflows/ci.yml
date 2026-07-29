@@ -98,6 +98,8 @@ jobs:
           path: |
             harness.log
             qtest.log
+            qtest-results.xml
+            TEST-qtest.xml
             qtest-summary.md
             qtest-metrics.jsonl
           if-no-files-found: ignore

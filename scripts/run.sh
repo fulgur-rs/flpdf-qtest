@@ -37,6 +37,9 @@
 #
 # Outputs:
 #   harness.log         — full qtest-driver stdout+stderr captured by tee
+#   qtest-results.xml   — qtest-driver's authoritative per-subtest results;
+#                         consumed together with harness.log by
+#                         verify-allowlist.py.
 #   qtest.log           — qtest-driver's own testlog (failure dumps).
 #                         qtest-driver writes this in cwd unconditionally
 #                         (`my $testlogfile = 'qtest.log';` upstream),
@@ -161,6 +164,7 @@ fi
 # --- run qtest-driver --------------------------------------------------------
 
 log="${repo_root}/harness.log"
+qtest_xml="${repo_root}/qtest-results.xml"
 : > "${log}"
 
 if [[ ${#stems[@]} -eq 0 ]]; then
@@ -180,6 +184,11 @@ else
         -bindirs "${shim_bin}" \
         -stdout-tty=0 \
         2>&1 | tee -a "${log}" || true
+
+    if [[ ! -f "${qtest_xml}" ]]; then
+        echo "run.sh: qtest results XML not found: ${qtest_xml}" >&2
+        exit 1
+    fi
 fi
 
 # --- verify against allowlist -----------------------------------------------
@@ -210,7 +219,12 @@ fi
 # Under GitHub Actions, also append a headline (counts + regressions, no long
 # candidate list) to the run's Job Summary. Locally GITHUB_STEP_SUMMARY is
 # unset, so this is a no-op and only the full qtest-summary.md is written.
-verify_args=( "${log}" "${repo_root}/allowlist.txt" --summary "${summary}" )
+verify_args=(
+    "${log}"
+    "${qtest_xml}"
+    "${repo_root}/allowlist.txt"
+    --summary "${summary}"
+)
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     verify_args+=( --step-summary "${GITHUB_STEP_SUMMARY}" )
 fi

@@ -53,20 +53,38 @@ flpdf-qtest/
 └── .github/workflows/ci.yml   # push / PR / weekly / workflow_dispatch
 ```
 
+## Outputs
+
+For every non-empty qtest run, `harness.log` and `qtest-results.xml` are a
+required pair from the same invocation. The log records qtest's human-readable
+outcomes while the XML provides its authoritative per-subtest result set;
+`verify-allowlist.py` reconciles both before it writes `qtest-summary.md` and
+`qtest-metrics.jsonl`. `TEST-qtest.xml` is qtest's accompanying JUnit artifact.
+
+Subsidiary suites without their own qtest summary are excluded from parsing,
+exactly as qtest excludes them from its root summary. Do not combine the log or
+XML from different runs: doing so is rejected as an inconsistent result set.
+
 ## Running locally
 
 ```bash
-# Build both binaries the harness needs. Select them by binary name so an
+# Build all three binaries the harness needs. Select them by binary name so an
 # flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
-cargo build --release --bin flpdf --bin flpdf-test-compare
+cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver
 
 # Then drive qtest.
 cd /path/to/flpdf-qtest
 FLPDF_CLI_BIN=/path/to/flpdf/target/release/flpdf \
 FLPDF_TEST_COMPARE_BIN=/path/to/flpdf/target/release/flpdf-test-compare \
+FLPDF_TEST_DRIVER_BIN=/path/to/flpdf/target/release/flpdf-test-driver \
   ./scripts/run.sh
 ```
+
+The non-empty run leaves `harness.log`, `qtest-results.xml`, and
+`TEST-qtest.xml` in the repository root. Keep `harness.log` and
+`qtest-results.xml` together when inspecting or sharing a result: the
+allowlist verdict is derived from that paired artifact set.
 
 Useful env knobs:
 
