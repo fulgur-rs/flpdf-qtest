@@ -225,6 +225,58 @@ class LoadManifestTest(unittest.TestCase):
         ):
             verify_manifest.load_manifest(path)
 
+    def test_rejects_duplicate_json_key_with_physical_line(self) -> None:
+        path = _tmp(
+            '{"id":"first","id":"arg-parsing 1",'
+            '"suite":"arg-parsing","category":"arg-parsing","ordinal":1,'
+            '"description":"required argument","state":"passing",'
+            '"rationale":null,"owner":null,"bead":null,'
+            '"replacement_ref":null}\n'
+        )
+
+        with self.assertRaisesRegex(
+            ValueError, rf"{path}:1: duplicate JSON key 'id'"
+        ):
+            verify_manifest.load_manifest(path)
+
+    def test_rejects_nonstring_required_fields(self) -> None:
+        for field in ("id", "suite", "category", "description", "state"):
+            with self.subTest(field=field):
+                path = _tmp(json.dumps(_entry(**{field: False})) + "\n")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    rf"{path}:1: field {field!r} must be a string",
+                ):
+                    verify_manifest.load_manifest(path)
+
+    def test_rejects_bool_float_and_nonpositive_ordinals(self) -> None:
+        for ordinal in (True, 1.5, 0, -1):
+            with self.subTest(ordinal=ordinal):
+                path = _tmp(json.dumps(_entry(ordinal=ordinal)) + "\n")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    rf"{path}:1: field 'ordinal' must be a positive integer",
+                ):
+                    verify_manifest.load_manifest(path)
+
+    def test_rejects_nonstring_nullable_fields(self) -> None:
+        for field in ("rationale", "owner", "bead", "replacement_ref"):
+            with self.subTest(field=field):
+                path = _tmp(json.dumps(_entry(**{field: 1})) + "\n")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    rf"{path}:1: field {field!r} must be a string or null",
+                ):
+                    verify_manifest.load_manifest(path)
+
+    def test_rejects_unhashable_category_before_validation(self) -> None:
+        path = _tmp(json.dumps(_entry(category=[])) + "\n")
+
+        with self.assertRaisesRegex(
+            ValueError, rf"{path}:1: field 'category' must be a string"
+        ):
+            verify_manifest.load_manifest(path)
+
 
 class StateContractTest(unittest.TestCase):
     def _validate(self, entry, outcome=Outcome.FAIL):
@@ -386,6 +438,69 @@ class StateContractTest(unittest.TestCase):
 
 
 class IdentityAndOutcomeTest(unittest.TestCase):
+    def test_rejects_lexically_sorted_but_numerically_unsorted_ordinals(
+        self,
+    ) -> None:
+        run = _run(
+            [
+                _result("cases", 2, "second", Outcome.PASS),
+                _result("cases", 10, "tenth", Outcome.PASS),
+            ]
+        )
+        entries = [
+            _entry(
+                id="cases 10",
+                suite="cases",
+                category="cases",
+                ordinal=10,
+                description="tenth",
+            ),
+            _entry(
+                id="cases 2",
+                suite="cases",
+                category="cases",
+                ordinal=2,
+                description="second",
+            ),
+        ]
+
+        validation = verify_manifest.validate_manifest(run, entries)
+
+        self.assertTrue(
+            any(
+                "manifest entries are not sorted" in error
+                for error in validation.errors
+            )
+        )
+
+    def test_accepts_numeric_ordinal_order_with_two_before_ten(self) -> None:
+        run = _run(
+            [
+                _result("cases", 2, "second", Outcome.PASS),
+                _result("cases", 10, "tenth", Outcome.PASS),
+            ]
+        )
+        entries = [
+            _entry(
+                id="cases 2",
+                suite="cases",
+                category="cases",
+                ordinal=2,
+                description="second",
+            ),
+            _entry(
+                id="cases 10",
+                suite="cases",
+                category="cases",
+                ordinal=10,
+                description="tenth",
+            ),
+        ]
+
+        self.assertEqual(
+            verify_manifest.validate_manifest(run, entries).errors, ()
+        )
+
     def test_rejects_noncanonical_category_ordinal_order(self) -> None:
         run = _run(
             [
@@ -856,6 +971,95 @@ class SummaryAndMainTest(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), "")
         self.assertIn("verify-parity-manifest:", stderr.getvalue())
         self.assertEqual(full.read_text(), "")
+
+    def test_invalid_field_types_exit_one_without_typeerror_traceback(
+        self,
+    ) -> None:
+        log, xml = _paired_artifacts(
+            [_result("arg-parsing", 1, "required argument", Outcome.PASS)]
+        )
+        invalid_values = (
+            _entry(id=False),
+            _entry(suite=0),
+            _entry(category=[]),
+            _entry(description={}),
+            _entry(state=1),
+            _entry(ordinal=True),
+            _entry(ordinal=1.5),
+            _entry(ordinal=0),
+            _entry(ordinal=-1),
+            _entry(rationale=False),
+            _entry(owner=[]),
+            _entry(bead={}),
+            _entry(replacement_ref=1),
+        )
+
+        for value in invalid_values:
+            with self.subTest(value=value):
+                manifest = _tmp(_manifest_text([value]))
+                full = _tmp("existing full\n", suffix=".md")
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with (
+                    contextlib.redirect_stdout(stdout),
+                    contextlib.redirect_stderr(stderr),
+                ):
+                    rc = verify_manifest.main(
+                        [
+                            str(log),
+                            str(xml),
+                            str(manifest),
+                            "--summary",
+                            str(full),
+                        ]
+                    )
+
+                self.assertEqual(rc, 1)
+                self.assertEqual(stdout.getvalue(), "")
+                self.assertIn(f"{manifest}:1:", stderr.getvalue())
+                self.assertNotIn("Traceback", stderr.getvalue())
+                self.assertNotIn("TypeError", stderr.getvalue())
+                self.assertEqual(full.read_text(), "existing full\n")
+
+    def test_duplicate_json_key_cli_error_has_no_traceback_or_summary(
+        self,
+    ) -> None:
+        log, xml = _paired_artifacts(
+            [_result("arg-parsing", 1, "required argument", Outcome.PASS)]
+        )
+        manifest = _tmp(
+            '{"id":"first","id":"arg-parsing 1",'
+            '"suite":"arg-parsing","category":"arg-parsing","ordinal":1,'
+            '"description":"required argument","state":"passing",'
+            '"rationale":null,"owner":null,"bead":null,'
+            '"replacement_ref":null}\n'
+        )
+        full = _tmp("existing full\n", suffix=".md")
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        with (
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            rc = verify_manifest.main(
+                [
+                    str(log),
+                    str(xml),
+                    str(manifest),
+                    "--summary",
+                    str(full),
+                ]
+            )
+
+        self.assertEqual(rc, 1)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn(
+            f"{manifest}:1: duplicate JSON key 'id'", stderr.getvalue()
+        )
+        self.assertNotIn("Traceback", stderr.getvalue())
+        self.assertNotIn("TypeError", stderr.getvalue())
+        self.assertEqual(full.read_text(), "existing full\n")
 
     def test_zero_authoritative_results_is_an_operational_error(self) -> None:
         log, xml = _paired_artifacts([])

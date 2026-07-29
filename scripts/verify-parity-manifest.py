@@ -28,10 +28,27 @@ FIELDS = (
     "bead",
     "replacement_ref",
 )
+STRING_FIELDS = ("id", "suite", "category", "description", "state")
+NULLABLE_STRING_FIELDS = ("rationale", "owner", "bead", "replacement_ref")
 
 _BEAD_RE = re.compile(r"^flpdf-[a-z0-9]+(?:\.[0-9]+)*$")
 _RUST_TEST_RE = re.compile(r"^rust-test:[^:\s]+:[^:\s]+:[^:\s]+$")
 _SCOPE_RE = re.compile(r"^scope:[^#\s]+#[^#\s]+$")
+
+
+class _DuplicateKeyError(ValueError):
+    pass
+
+
+def _object_without_duplicate_keys(
+    pairs: list[tuple[str, object]],
+) -> dict[str, object]:
+    value: dict[str, object] = {}
+    for key, item in pairs:
+        if key in value:
+            raise _DuplicateKeyError(f"duplicate JSON key {key!r}")
+        value[key] = item
+    return value
 
 
 @dataclass(frozen=True)
@@ -64,15 +81,37 @@ def load_manifest(path: Path) -> list[ManifestEntry]:
         if not raw:
             raise ValueError(f"{path}:{lineno}: blank lines are not allowed")
         try:
-            value = json.loads(raw)
+            value = json.loads(
+                raw,
+                object_pairs_hook=_object_without_duplicate_keys,
+            )
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f"{path}:{lineno}: invalid JSON: {exc.msg}"
             ) from exc
+        except _DuplicateKeyError as exc:
+            raise ValueError(f"{path}:{lineno}: {exc}") from exc
         if not isinstance(value, dict) or tuple(value) != FIELDS:
             raise ValueError(
                 f"{path}:{lineno}: fields must be {', '.join(FIELDS)} in order"
             )
+        for field in STRING_FIELDS:
+            if type(value[field]) is not str:
+                raise ValueError(
+                    f"{path}:{lineno}: field {field!r} must be a string"
+                )
+        ordinal = value["ordinal"]
+        if type(ordinal) is not int or ordinal <= 0:
+            raise ValueError(
+                f"{path}:{lineno}: field 'ordinal' must be a positive integer"
+            )
+        for field in NULLABLE_STRING_FIELDS:
+            item = value[field]
+            if item is not None and type(item) is not str:
+                raise ValueError(
+                    f"{path}:{lineno}: field {field!r} "
+                    "must be a string or null"
+                )
         entry = ManifestEntry(**value)
         if entry.id in seen:
             raise ValueError(f"{path}:{lineno}: duplicate id {entry.id!r}")
