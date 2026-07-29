@@ -318,6 +318,74 @@ class ParseRunTest(unittest.TestCase):
 
         self.assertEqual(run.results[0].description, "auto-öπ")
 
+    def test_restores_zero_padded_mixed_case_qtest_byte_entities(self) -> None:
+        xml = _xml(
+            """
+             <testsuite file="/repo/unicode.test">
+              <testcase testid="unicode 1" description="auto-&#x00C3;&#x0bC;" outcome="fail"/>
+              <testsummary total-cases="1" passes="0" failures="1"
+               unexpected-passes="0" expected-failures="0"
+               missing-cases="0" extra-cases="0"/>
+             </testsuite>
+            """,
+            total=1,
+            passes=0,
+            failures=1,
+        )
+        log = _tmp(".log", "unicode test 1 (auto-ü) FAILED\n")
+
+        run = qtest_results.parse_run(log, xml)
+
+        self.assertEqual(run.results[0].description, "auto-ü")
+
+    def test_restores_only_testcase_description_attributes(self) -> None:
+        raw = (
+            b'<qtest-results><testcase note=\'description="auto-&#xc3;&#xbc;"\' '
+            b'testid="auto-&#xc3;&#xbc; 1" '
+            b'description="auto-&#xc3;&#xbc;" outcome="pass"/>'
+            b'<metadata description="auto-&#xc3;&#xbc;"/></qtest-results>'
+        )
+
+        restored = qtest_results._restore_qtest_description_entities(raw)
+
+        self.assertIn(b'testid="auto-&#xc3;&#xbc; 1"', restored)
+        self.assertIn(b'note=\'description="auto-&#xc3;&#xbc;"\'', restored)
+        self.assertIn(b'description="auto-\xc3\xbc"', restored)
+        self.assertIn(
+            b'<metadata description="auto-&#xc3;&#xbc;"/>',
+            restored,
+        )
+
+    def test_preserves_literal_latin1_looking_utf8_descriptions(self) -> None:
+        xml = _xml(
+            """
+             <testsuite file="/repo/literal.test">
+              <testcase testid="literal 1" description="literal Ã¼" outcome="pass"/>
+              <testcase testid="literal 2" description="literal Â£" outcome="pass"/>
+              <testsummary total-cases="2" passes="2" failures="0"
+               unexpected-passes="0" expected-failures="0"
+               missing-cases="0" extra-cases="0"/>
+             </testsuite>
+            """,
+            total=2,
+            passes=2,
+            failures=0,
+        )
+        log = _tmp(
+            ".log",
+            """
+            literal  1 (literal Ã¼) ... PASSED
+            literal  2 (literal Â£) ... PASSED
+            """,
+        )
+
+        run = qtest_results.parse_run(log, xml)
+
+        self.assertEqual(
+            [result.description for result in run.results],
+            ["literal Ã¼", "literal Â£"],
+        )
+
     def test_preserves_ascii_natural_unicode_and_invalid_byte_descriptions(self) -> None:
         xml = _xml(
             """

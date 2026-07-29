@@ -67,6 +67,13 @@ _LOG_RESULT_RE = re.compile(
     r"\((?P<description>.+)\)(?:\s+\.\.\.)?\s+"
     r"(?P<status>PASSED-UNEXP|PASSED|FAILED \(exp\)|FAILED)\s*$"
 )
+_TESTCASE_START_TAG_RE = re.compile(
+    rb"<testcase(?=[\s/>])(?:[^\"'>]+|\"[^\"]*\"|'[^']*')*>"
+)
+_ATTRIBUTE_NAME_RE = re.compile(rb"[A-Za-z_:][A-Za-z0-9_.:-]*")
+_NUMERIC_ENTITY_RUN_RE = re.compile(rb"(?:&#[xX][0-9A-Fa-f]+;)+")
+_NUMERIC_ENTITY_RE = re.compile(rb"&#[xX]([0-9A-Fa-f]+);")
+_XML_WHITESPACE = b" \t\r\n"
 
 
 @dataclass(frozen=True)
@@ -194,20 +201,72 @@ def _validate_root_matches_children(
             )
 
 
-def _restore_qtest_utf8_bytes(value: str) -> str:
-    """Undo qtest's XML numeric-entity encoding of individual UTF-8 bytes.
+def _restore_qtest_description_entities(xml: bytes) -> bytes:
+    """Restore qtest's byte entities only in testcase description attributes."""
+    return _TESTCASE_START_TAG_RE.sub(_restore_testcase_description, xml)
 
-    ``xmlify`` emits one numeric entity per byte >= 0x7f. ElementTree turns
-    those entities into Latin-1 code points, so restore only a sequence that
-    contains such a code point and is a complete, valid UTF-8 byte sequence.
-    Literal Unicode and malformed byte sequences remain unchanged.
-    """
-    if not any("\x80" <= char <= "\xff" for char in value):
-        return value
+
+def _restore_testcase_description(match: re.Match[bytes]) -> bytes:
+    tag = match.group()
+    position = len(b"<testcase")
+    restored = bytearray(tag[:position])
+
+    while position < len(tag):
+        attribute_start = position
+        while position < len(tag) and tag[position] in _XML_WHITESPACE:
+            position += 1
+        if position == len(tag) or tag[position] in b"/>":
+            restored.extend(tag[attribute_start:])
+            return bytes(restored)
+
+        name = _ATTRIBUTE_NAME_RE.match(tag, position)
+        if name is None:
+            return tag
+        position = name.end()
+        while position < len(tag) and tag[position] in _XML_WHITESPACE:
+            position += 1
+        if position == len(tag) or tag[position] != ord("="):
+            return tag
+        position += 1
+        while position < len(tag) and tag[position] in _XML_WHITESPACE:
+            position += 1
+        if position == len(tag) or tag[position] not in b"\"'":
+            return tag
+
+        quote = tag[position]
+        value_start = position + 1
+        value_end = tag.find(bytes((quote,)), value_start)
+        if value_end == -1:
+            return tag
+
+        restored.extend(tag[attribute_start:value_start])
+        value = tag[value_start:value_end]
+        if name.group() == b"description":
+            value = _NUMERIC_ENTITY_RUN_RE.sub(_restore_entity_runs, value)
+        restored.extend(value)
+        restored.extend(tag[value_end : value_end + 1])
+        position = value_end + 1
+
+    return bytes(restored)
+
+
+def _restore_entity_runs(match: re.Match[bytes]) -> bytes:
+    encoded = match.group()
+    values = [int(value, 16) for value in _NUMERIC_ENTITY_RE.findall(encoded)]
+    if not all(0x80 <= value <= 0xFF for value in values):
+        return encoded
     try:
-        return value.encode("latin-1").decode("utf-8")
-    except UnicodeError:
-        return value
+        return bytes(values).decode("utf-8").encode("utf-8")
+    except UnicodeDecodeError:
+        return encoded
+
+
+def _parse_xml(xml_path: Path) -> ET.Element:
+    try:
+        xml = _restore_qtest_description_entities(xml_path.read_bytes())
+        return ET.fromstring(xml)
+    except (ET.ParseError, OSError) as exc:
+        raise ResultError(f"malformed XML: {exc}") from exc
 
 
 def _parse_xml_case(case: ET.Element, suite: str) -> _XmlCase:
@@ -226,7 +285,7 @@ def _parse_xml_case(case: ET.Element, suite: str) -> _XmlCase:
         suite=suite,
         category=category,
         ordinal=int(ordinal_text),
-        description=_restore_qtest_utf8_bytes(description),
+        description=description,
         actual_outcome=actual_outcome,
     )
 
@@ -249,10 +308,7 @@ def _parse_log_case(match: re.Match[str]) -> _LogCase:
 
 def parse_run(log_path: Path, xml_path: Path) -> RunResults:
     """Join the harness log to the XML result set from one qtest invocation."""
-    try:
-        root = ET.parse(xml_path).getroot()
-    except (ET.ParseError, OSError) as exc:
-        raise ResultError(f"malformed XML: {exc}") from exc
+    root = _parse_xml(xml_path)
     if root.tag != "qtest-results":
         raise ResultError(f"malformed XML: unexpected root {root.tag!r}")
 
