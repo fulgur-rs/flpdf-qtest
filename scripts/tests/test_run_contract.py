@@ -54,7 +54,7 @@ class RunContractTest(unittest.TestCase):
         )[1].split("# --- verify against allowlist", maxsplit=1)[0]
         driver = 'perl "${repo_root}/vendor/qtest/bin/qtest-driver"'
         clear = (
-            'rm -f "${qtest_xml}" "${qtest_junit}" '
+            'rm -f "${qtest_log}" "${qtest_xml}" "${qtest_junit}" '
             '"${summary}" "${metrics}"'
         )
 

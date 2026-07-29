@@ -439,6 +439,28 @@ class MainTest(unittest.TestCase):
 
         self.assertEqual(raised.exception.code, 0)
 
+    def test_summary_help_matches_operational_error_contract(self) -> None:
+        stdout = io.StringIO()
+
+        with (
+            contextlib.redirect_stdout(stdout),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            verify_allowlist.main(["--help"])
+
+        help_text = " ".join(stdout.getvalue().split())
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn(
+            "write the full Markdown summary after successful result "
+            "reconciliation, including soft policy FAIL verdicts",
+            help_text,
+        )
+        self.assertIn(
+            "not written on operational parser errors",
+            help_text,
+        )
+        self.assertNotIn("always written", help_text)
+
     def test_step_summary_is_headline_full_summary_is_complete(self) -> None:
         _rc, full, step, _metrics = self._run(
             [_result("arg-parsing", "surprise", True), _result("arg-parsing", "req", False, ordinal=2)],

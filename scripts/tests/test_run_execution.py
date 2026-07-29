@@ -15,6 +15,7 @@ from pathlib import Path
 _ROOT = Path(__file__).parents[2]
 _SENTINEL = "PRESEEDED SUCCESS SENTINEL\n"
 _GENERATED = (
+    "qtest.log",
     "qtest-results.xml",
     "TEST-qtest.xml",
     "qtest-summary.md",
@@ -59,6 +60,10 @@ class RunExecutionTest(unittest.TestCase):
                     print "driver stopped before XML\n";
                     exit 1;
                 }
+
+                open my $qtest_log, ">", "qtest.log" or die $!;
+                print {$qtest_log} "fresh qtest log: $mode\n";
+                close $qtest_log;
 
                 open my $junit, ">", "TEST-qtest.xml" or die $!;
                 print {$junit} "fresh junit\n";
@@ -135,6 +140,7 @@ class RunExecutionTest(unittest.TestCase):
             "driver stopped before XML",
             (self.repo / "harness.log").read_text(encoding="utf-8"),
         )
+        self.assertFalse((self.repo / "qtest.log").exists())
         self.assertFalse((self.repo / "qtest-results.xml").exists())
         self.assertFalse((self.repo / "TEST-qtest.xml").exists())
         self.assertFalse((self.repo / "qtest-summary.md").exists())
@@ -154,6 +160,10 @@ class RunExecutionTest(unittest.TestCase):
             (self.repo / "TEST-qtest.xml").read_text(encoding="utf-8"),
             "fresh junit\n",
         )
+        self.assertEqual(
+            (self.repo / "qtest.log").read_text(encoding="utf-8"),
+            "fresh qtest log: malformed-xml\n",
+        )
         self.assertFalse((self.repo / "qtest-summary.md").exists())
         metrics = self.repo / "qtest-metrics.jsonl"
         self.assertTrue(not metrics.exists() or metrics.read_text(encoding="utf-8") == "")
@@ -168,6 +178,7 @@ class RunExecutionTest(unittest.TestCase):
             "Verdict: OK (empty allowlist)",
             (self.repo / "qtest-summary.md").read_text(encoding="utf-8"),
         )
+        self.assertFalse((self.repo / "qtest.log").exists())
         self.assertFalse((self.repo / "qtest-results.xml").exists())
         self.assertFalse((self.repo / "TEST-qtest.xml").exists())
         self.assertFalse((self.repo / "qtest-metrics.jsonl").exists())
@@ -184,6 +195,10 @@ class RunExecutionTest(unittest.TestCase):
         self.assertIn(
             'testid="invalid 1"',
             (self.repo / "qtest-results.xml").read_text(encoding="utf-8"),
+        )
+        self.assertEqual(
+            (self.repo / "qtest.log").read_text(encoding="utf-8"),
+            "fresh qtest log: invalid-only\n",
         )
         self.assertFalse((self.repo / "qtest-summary.md").exists())
         metrics = self.repo / "qtest-metrics.jsonl"

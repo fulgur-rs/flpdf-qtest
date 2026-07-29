@@ -164,11 +164,12 @@ fi
 # --- run qtest-driver --------------------------------------------------------
 
 log="${repo_root}/harness.log"
+qtest_log="${repo_root}/qtest.log"
 qtest_xml="${repo_root}/qtest-results.xml"
 qtest_junit="${repo_root}/TEST-qtest.xml"
 summary="${repo_root}/qtest-summary.md"
 metrics="${repo_root}/qtest-metrics.jsonl"
-rm -f "${qtest_xml}" "${qtest_junit}" "${summary}" "${metrics}"
+rm -f "${qtest_log}" "${qtest_xml}" "${qtest_junit}" "${summary}" "${metrics}"
 : > "${log}"
 
 if [[ ${#stems[@]} -eq 0 ]]; then

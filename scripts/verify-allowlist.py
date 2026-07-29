@@ -221,7 +221,11 @@ def main(argv: list[str] | None = None) -> int:
         "--summary",
         type=Path,
         default=None,
-        help="write the full Markdown summary to this path (always written)",
+        help=(
+            "write the full Markdown summary after successful result "
+            "reconciliation, including soft policy FAIL verdicts; not "
+            "written on operational parser errors"
+        ),
     )
     ap.add_argument(
         "--step-summary",
