@@ -27,6 +27,24 @@ class RunContractTest(unittest.TestCase):
             r'verify-allowlist\.py"\s+"\$\{verify_args\[@\]\}"',
         )
 
+    def test_manifest_verifier_receives_paired_full_survey_artifacts(self) -> None:
+        self.assertIn("QTEST_FULL", self.script)
+        self.assertRegex(
+            self.script,
+            r'parity_args=\(\s*"\$\{log\}"\s+"\$\{qtest_xml\}"\s+'
+            r'"\$\{manifest\}"',
+        )
+        self.assertRegex(
+            self.script,
+            r'verify-parity-manifest\.py"\s+"\$\{parity_args\[@\]}"',
+        )
+        self.assertRegex(
+            self.script,
+            r'if \[\[ "\$\{QTEST_FULL:-0\}" != "1" \]\]; then\s+'
+            r'echo "run\.sh: parity manifest validation requires QTEST_FULL=1" >&2\s+'
+            r'exit 2\s+fi',
+        )
+
     def test_nonempty_run_requires_qtest_result_xml_before_verification(self) -> None:
         self.assertIn('qtest_xml="${repo_root}/qtest-results.xml"', self.script)
         run_section = self.script.split(
@@ -78,5 +96,24 @@ class RunContractTest(unittest.TestCase):
             self.workflow,
             r'(?s)- name: Upload qtest artifacts.*?path: \|\s+'
             r'harness\.log\s+qtest\.log\s+qtest-results\.xml\s+'
-            r'TEST-qtest\.xml\s+qtest-summary\.md\s+qtest-metrics\.jsonl',
+            r'TEST-qtest\.xml\s+qtest-summary\.md\s+qtest-metrics\.jsonl\s+'
+            r'qtest-parity-summary\.md',
+        )
+
+    def test_ci_full_survey_uploads_parity_summary(self) -> None:
+        qtest_step = self.workflow.split(
+            "- name: Run qtest acceptance suite", maxsplit=1
+        )[1].split("- name: Upload qtest artifacts", maxsplit=1)[0]
+        self.assertRegex(qtest_step, r'QTEST_FULL:\s+"1"')
+        self.assertRegex(
+            self.workflow,
+            r'(?s)qtest:\s+runs-on: ubuntu-latest\s+timeout-minutes: 30',
+        )
+        self.assertIn(
+            "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            self.workflow,
+        )
+        self.assertRegex(
+            self.workflow,
+            r'(?s)- name: Upload qtest artifacts.*?qtest-parity-summary\.md',
         )

@@ -48,6 +48,8 @@
 #                         the tee fd and silently losing our columnar
 #                         status lines.
 #   qtest-summary.md    — verify-allowlist.py judgment
+#   qtest-parity-summary.md — verify-parity-manifest.py judgment for the
+#                              complete qtest survey only
 
 set -euo pipefail
 
@@ -169,7 +171,9 @@ qtest_xml="${repo_root}/qtest-results.xml"
 qtest_junit="${repo_root}/TEST-qtest.xml"
 summary="${repo_root}/qtest-summary.md"
 metrics="${repo_root}/qtest-metrics.jsonl"
-rm -f "${qtest_log}" "${qtest_xml}" "${qtest_junit}" "${summary}" "${metrics}"
+manifest="${repo_root}/parity/qtest-11.9.0.jsonl"
+parity_summary="${repo_root}/qtest-parity-summary.md"
+rm -f "${qtest_log}" "${qtest_xml}" "${qtest_junit}" "${summary}" "${metrics}" "${parity_summary}"
 : > "${log}"
 
 if [[ ${#stems[@]} -eq 0 ]]; then
@@ -182,6 +186,11 @@ if [[ ${#stems[@]} -eq 0 ]]; then
         perl "${repo_root}/vendor/qtest/bin/qtest-driver" --version
     } | tee -a "${log}"
 else
+    if [[ "${QTEST_FULL:-0}" != "1" ]]; then
+        echo "run.sh: parity manifest validation requires QTEST_FULL=1" >&2
+        exit 2
+    fi
+
     echo "==> Running qtest-driver on: ${stems[*]}"
     TESTS="${stems[*]}" \
     perl "${repo_root}/vendor/qtest/bin/qtest-driver" \
@@ -243,3 +252,17 @@ verify_args+=(
 )
 
 python3 "${repo_root}/scripts/verify-allowlist.py" "${verify_args[@]}"
+
+# The allowlist is intentionally a small acceptance subset. Only a full qtest
+# survey can be compared to the complete parity ledger, and this runs after
+# the allowlist verifier so its existing verdict remains the first gate.
+parity_args=(
+    "${log}"
+    "${qtest_xml}"
+    "${manifest}"
+    --summary "${parity_summary}"
+)
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    parity_args+=( --step-summary "${GITHUB_STEP_SUMMARY}" )
+fi
+python3 "${repo_root}/scripts/verify-parity-manifest.py" "${parity_args[@]}"

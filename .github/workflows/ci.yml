@@ -88,6 +88,7 @@ jobs:
           FLPDF_TEST_COMPARE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-compare
           FLPDF_TEST_DRIVER_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-driver
           FLPDF_COMMIT: ${{ steps.flpdf_sha.outputs.sha }}
+          QTEST_FULL: "1"
         run: ./scripts/run.sh
 
       - name: Upload qtest artifacts
@@ -102,6 +103,7 @@ jobs:
             TEST-qtest.xml
             qtest-summary.md
             qtest-metrics.jsonl
+            qtest-parity-summary.md
           if-no-files-found: ignore
 
   # Nightly only: append the run's metrics to the metrics-data history branch

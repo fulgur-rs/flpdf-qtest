@@ -20,6 +20,7 @@ _GENERATED = (
     "TEST-qtest.xml",
     "qtest-summary.md",
     "qtest-metrics.jsonl",
+    "qtest-parity-summary.md",
 )
 
 
@@ -31,12 +32,26 @@ class RunExecutionTest(unittest.TestCase):
         (self.repo / "shim").mkdir()
         (self.repo / "vendor" / "qtest" / "bin").mkdir(parents=True)
         (self.repo / "vendor" / "qpdf-qtest").mkdir(parents=True)
-        for name in ("run.sh", "verify-allowlist.py", "qtest_results.py"):
+        for name in (
+            "run.sh",
+            "verify-allowlist.py",
+            "verify-parity-manifest.py",
+            "qtest_results.py",
+        ):
             shutil.copy2(_ROOT / "scripts" / name, self.repo / "scripts" / name)
         (self.repo / "allowlist.txt").write_text(
             "valid:kept\n",
             encoding="utf-8",
         )
+        (self.repo / "parity").mkdir()
+        (self.repo / "parity" / "qtest-11.9.0.jsonl").write_text(
+            '{"id":"valid 1","suite":"valid","category":"valid",'
+            '"ordinal":1,"description":"kept","state":"passing",'
+            '"rationale":null,"owner":null,"bead":null,'
+            '"replacement_ref":null}\n',
+            encoding="utf-8",
+        )
+        (self.repo / "vendor" / "qpdf-qtest" / "valid.test").touch()
 
         fake_binary = self.repo / "fake-flpdf"
         fake_binary.write_text("#!/usr/bin/env sh\nexit 0\n", encoding="utf-8")
@@ -86,6 +101,22 @@ class RunExecutionTest(unittest.TestCase):
                 </qtest-results>
                 XML
                     print "invalid test 1 (partial) FAILED\n";
+                } elsif ($mode eq "valid-only") {
+                    print {$xml} <<'XML';
+                <?xml version="1.0"?>
+                <qtest-results version="1">
+                 <testsuite file="/repo/valid.test">
+                  <testcase testid="valid 1" description="kept" outcome="pass"/>
+                  <testsummary total-cases="1" passes="1" failures="0"
+                   unexpected-passes="0" expected-failures="0"
+                   missing-cases="0" extra-cases="0"/>
+                 </testsuite>
+                 <testsummary total-cases="1" passes="1" failures="0"
+                  unexpected-passes="0" expected-failures="0"
+                  missing-cases="0" extra-cases="0"/>
+                </qtest-results>
+                XML
+                    print "valid  1 (kept) ... PASSED\n";
                 } else {
                     die "unexpected FAKE_QTEST_MODE: $mode";
                 }
@@ -103,7 +134,14 @@ class RunExecutionTest(unittest.TestCase):
         for name in _GENERATED:
             (self.repo / name).write_text(_SENTINEL, encoding="utf-8")
 
-    def _run(self, mode: str, *, empty: bool = False) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self,
+        mode: str,
+        *,
+        empty: bool = False,
+        full: bool = False,
+        step_summary: Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         self._preseed()
         if empty:
             (self.repo / "allowlist.txt").write_text("", encoding="utf-8")
@@ -116,6 +154,10 @@ class RunExecutionTest(unittest.TestCase):
                 "FAKE_QTEST_MODE": mode,
             }
         )
+        if full:
+            env["QTEST_FULL"] = "1"
+        if step_summary is not None:
+            env["GITHUB_STEP_SUMMARY"] = str(step_summary)
         return subprocess.run(
             [str(self.repo / "scripts" / "run.sh")],
             cwd=self.repo,
@@ -132,7 +174,7 @@ class RunExecutionTest(unittest.TestCase):
                 self.assertNotIn(_SENTINEL.strip(), path.read_text(encoding="utf-8"))
 
     def test_missing_xml_cannot_reuse_preseeded_success_artifacts(self) -> None:
-        completed = self._run("missing-xml")
+        completed = self._run("missing-xml", full=True)
 
         self.assertEqual(completed.returncode, 1)
         self.assertIn("qtest results XML not found", completed.stderr)
@@ -148,7 +190,7 @@ class RunExecutionTest(unittest.TestCase):
         self._assert_no_sentinel()
 
     def test_parser_error_retains_current_failure_xml_without_stale_outputs(self) -> None:
-        completed = self._run("malformed-xml")
+        completed = self._run("malformed-xml", full=True)
 
         self.assertEqual(completed.returncode, 1)
         self.assertIn("verify-allowlist: malformed XML", completed.stderr)
@@ -182,10 +224,53 @@ class RunExecutionTest(unittest.TestCase):
         self.assertFalse((self.repo / "qtest-results.xml").exists())
         self.assertFalse((self.repo / "TEST-qtest.xml").exists())
         self.assertFalse((self.repo / "qtest-metrics.jsonl").exists())
+        self.assertFalse((self.repo / "qtest-parity-summary.md").exists())
+        self._assert_no_sentinel()
+
+    def test_full_survey_writes_fresh_parity_and_step_summaries(self) -> None:
+        step_summary = self.repo / "step-summary.md"
+        step_summary.write_text(_SENTINEL, encoding="utf-8")
+
+        completed = self._run(
+            "valid-only", full=True, step_summary=step_summary
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        parity = (self.repo / "qtest-parity-summary.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("# qtest parity manifest", parity)
+        self.assertIn("**Verdict: OK**", parity)
+        summary = step_summary.read_text(encoding="utf-8")
+        self.assertIn(_SENTINEL, summary)
+        self.assertIn("# qtest-summary", summary)
+        self.assertIn("# qtest parity manifest", summary)
+        self._assert_no_sentinel()
+
+    def test_partial_survey_fails_before_driver_or_manifest_validation(self) -> None:
+        completed = self._run("valid-only")
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn(
+            "parity manifest validation requires QTEST_FULL=1", completed.stderr
+        )
+        self.assertEqual((self.repo / "harness.log").read_text(encoding="utf-8"), "")
+        self._assert_no_sentinel()
+
+    def test_manifest_operational_error_propagates_without_stale_summary(self) -> None:
+        (self.repo / "parity" / "qtest-11.9.0.jsonl").write_text(
+            "not json\n", encoding="utf-8"
+        )
+
+        completed = self._run("valid-only", full=True)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("verify-parity-manifest:", completed.stderr)
+        self.assertFalse((self.repo / "qtest-parity-summary.md").exists())
         self._assert_no_sentinel()
 
     def test_invalid_only_nonempty_run_is_not_reported_as_success(self) -> None:
-        completed = self._run("invalid-only")
+        completed = self._run("invalid-only", full=True)
 
         self.assertEqual(completed.returncode, 1)
         self.assertIn(
