@@ -188,16 +188,38 @@ def validate_manifest(
             errors.append(f"{entry.id}: unknown state {entry.state!r}")
             continue
 
-        required = {
-            "failing": ("rationale", "owner", "bead"),
-            "blocked": ("rationale", "owner", "bead"),
-            "applicable": ("rationale", "owner", "bead"),
-            "excluded": ("rationale", "replacement_ref"),
-            "represented": ("rationale", "replacement_ref"),
-        }.get(entry.state, ())
+        required, forbidden = {
+            "passing": (
+                (),
+                ("rationale", "owner", "bead", "replacement_ref"),
+            ),
+            "failing": (
+                ("rationale", "owner", "bead"),
+                ("replacement_ref",),
+            ),
+            "blocked": (
+                ("rationale", "owner", "bead"),
+                ("replacement_ref",),
+            ),
+            "applicable": (
+                ("rationale", "owner", "bead"),
+                ("replacement_ref",),
+            ),
+            "excluded": (
+                ("rationale", "replacement_ref"),
+                ("owner", "bead"),
+            ),
+            "represented": (
+                ("rationale", "replacement_ref"),
+                ("owner", "bead"),
+            ),
+        }[entry.state]
         for field in required:
             if not _present(getattr(entry, field)):
                 errors.append(f"{entry.id}: {entry.state} entry requires {field}")
+        for field in forbidden:
+            if getattr(entry, field) is not None:
+                errors.append(f"{entry.id}: {entry.state} entry forbids {field}")
 
         if entry.bead is not None and (
             not isinstance(entry.bead, str)

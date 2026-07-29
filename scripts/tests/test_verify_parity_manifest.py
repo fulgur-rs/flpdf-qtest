@@ -369,6 +369,89 @@ class StateContractTest(unittest.TestCase):
                 validation = self._validate(_entry(state=state, **fields))
                 self.assertTrue(validation.errors)
 
+    def test_rejects_every_state_forbidden_field(self) -> None:
+        valid = {
+            "passing": _entry(),
+            "failing": _entry(
+                state="failing",
+                rationale="output differs",
+                owner="PDF parity",
+                bead="flpdf-25kg.3",
+            ),
+            "blocked": _entry(
+                state="blocked",
+                rationale="CLI option is absent",
+                owner="CLI parity",
+                bead="flpdf-25kg.4",
+            ),
+            "applicable": _entry(
+                state="applicable",
+                rationale="boundary is not yet distinguished",
+                owner="Parity inventory",
+                bead="flpdf-25kg",
+            ),
+            "excluded": _entry(
+                state="excluded",
+                rationale="outside Rust parity",
+                replacement_ref="scope:docs/scope.md#abi",
+            ),
+            "represented": _entry(
+                state="represented",
+                rationale="covered by a Rust oracle",
+                replacement_ref="rust-test:flpdf:reader_tests:oracle",
+            ),
+        }
+        forbidden = {
+            "passing": ("rationale", "owner", "bead", "replacement_ref"),
+            "failing": ("replacement_ref",),
+            "blocked": ("replacement_ref",),
+            "applicable": ("replacement_ref",),
+            "excluded": ("owner", "bead"),
+            "represented": ("owner", "bead"),
+        }
+        values = {
+            "rationale": "stale rationale",
+            "owner": "stale owner",
+            "bead": "flpdf-stale",
+            "replacement_ref": "scope:docs/stale.md#reference",
+        }
+
+        for state, fields in forbidden.items():
+            for field in fields:
+                for value in (values[field], ""):
+                    with self.subTest(state=state, field=field, value=value):
+                        entry = {**valid[state], field: value}
+                        outcome = (
+                            Outcome.PASS
+                            if state == "passing"
+                            else Outcome.FAIL
+                        )
+                        validation = self._validate(entry, outcome)
+                        self.assertIn(
+                            f"arg-parsing 1: {state} entry forbids {field}",
+                            validation.errors,
+                        )
+
+    def test_promotion_to_passing_rejects_all_stale_metadata(self) -> None:
+        entry = _entry(
+            rationale="old failure rationale",
+            owner="old owner",
+            bead="flpdf-25kg.3",
+            replacement_ref="scope:docs/old.md#classification",
+        )
+
+        validation = self._validate(entry, Outcome.PASS)
+
+        self.assertEqual(
+            validation.errors,
+            (
+                "arg-parsing 1: passing entry forbids rationale",
+                "arg-parsing 1: passing entry forbids owner",
+                "arg-parsing 1: passing entry forbids bead",
+                "arg-parsing 1: passing entry forbids replacement_ref",
+            ),
+        )
+
     def test_rejects_unknown_state(self) -> None:
         validation = self._validate(_entry(state="unknown"))
 

@@ -62,20 +62,24 @@ class RunContractTest(unittest.TestCase):
     def _assert_parity_ledger_state_field_contracts(self, section: str) -> None:
         rows = (
             "| `passing` | The authoritative run is an ordinary PASS. | "
-            "No state-specific fields. |",
+            "`rationale`, `owner`, `bead`, and `replacement_ref` are `null`. |",
             "| `failing` | flpdf behavior was reached and differs from qpdf. | "
-            "`rationale`, `owner`, `bead` |",
+            "`rationale`, `owner`, and `bead` are required; "
+            "`replacement_ref` is `null`. |",
             "| `blocked` | A known observation boundary prevented reaching the "
-            "behavior. | `rationale`, `owner`, `bead` |",
+            "behavior. | `rationale`, `owner`, and `bead` are required; "
+            "`replacement_ref` is `null`. |",
             "| `applicable` | The behavior is in scope but evidence cannot yet "
             "distinguish blocked from reached failure; expected-failure cases "
-            "begin here. | `rationale`, `owner`, `bead` |",
+            "begin here. | `rationale`, `owner`, and `bead` are required; "
+            "`replacement_ref` is `null`. |",
             "| `excluded` | The behavior is outside Linux x86_64 Rust parity, "
-            "such as Windows shell or C/C++ ABI behavior. | `rationale`, "
-            "`replacement_ref` |",
+            "such as Windows shell or C/C++ ABI behavior. | `rationale` and "
+            "`replacement_ref` are required; `owner` and `bead` are `null`. |",
             "| `represented` | The direct qtest route is outside the Rust "
             "boundary, but portable behavior has a Rust oracle test. | "
-            "`rationale`, `replacement_ref` naming a Rust test |",
+            "`rationale` and a Rust-test `replacement_ref` are required; "
+            "`owner` and `bead` are `null`. |",
         )
         for row in rows:
             self.assertIn(row, section)
@@ -175,8 +179,8 @@ class RunContractTest(unittest.TestCase):
         mutants = (
             (
                 "passing-required-fields-inversion",
-                "No state-specific fields.",
-                "`rationale`, `owner`, `bead`",
+                "and `replacement_ref` are `null`.",
+                "and `replacement_ref` are required.",
                 state_check,
             ),
             (
@@ -205,8 +209,8 @@ class RunContractTest(unittest.TestCase):
             ),
             (
                 "represented-rust-test-inversion",
-                "naming a Rust test",
-                "naming a Bead",
+                "a Rust-test `replacement_ref`",
+                "a Bead `replacement_ref`",
                 state_check,
             ),
             (
@@ -359,18 +363,46 @@ class RunContractTest(unittest.TestCase):
             r'exit 1\s+fi',
         )
 
-    def test_generated_result_artifacts_are_cleared_before_driver_execution(self) -> None:
-        run_section = self.script.split(
-            "# --- run qtest-driver", maxsplit=1
-        )[1].split("# --- verify against allowlist", maxsplit=1)[0]
-        driver = 'perl "${repo_root}/vendor/qtest/bin/qtest-driver"'
-        clear = (
-            'rm -f "${qtest_log}" "${qtest_xml}" "${qtest_junit}" '
-            '"${summary}" "${metrics}"'
+    def test_every_generated_artifact_is_cleared_before_binary_preflight(
+        self,
+    ) -> None:
+        clear = self.script.index("rm -f")
+        binary_resolution = self.script.index(
+            'if [[ -z "${FLPDF_CLI_BIN:-}" ]]'
+        )
+        generated = (
+            "${log}",
+            "${qtest_log}",
+            "${qtest_xml}",
+            "${qtest_junit}",
+            "${summary}",
+            "${metrics}",
+            "${parity_summary}",
         )
 
-        self.assertIn(clear, run_section)
-        self.assertLess(run_section.index(clear), run_section.index(driver))
+        self.assertLess(clear, binary_resolution)
+        clear_block = self.script[clear:binary_resolution]
+        for artifact in generated:
+            self.assertIn(f'"{artifact}"', clear_block)
+
+    def test_driver_receives_only_the_isolated_qtest_datadir(self) -> None:
+        self.assertIn(
+            'qtest_source="${repo_root}/vendor/qpdf-qtest"',
+            self.script,
+        )
+        self.assertIn(
+            'qtest_datadir="${run_tmp}/qpdf-qtest"',
+            self.script,
+        )
+        self.assertIn(
+            'cp -a --reflink=auto "${qtest_source}" "${qtest_datadir}"',
+            self.script,
+        )
+        self.assertIn('-datadir "${qtest_datadir}"', self.script)
+        self.assertNotIn(
+            '-datadir "${repo_root}/vendor/qpdf-qtest"',
+            self.script,
+        )
 
     def test_verifier_keeps_summary_and_metrics_outputs(self) -> None:
         self.assertRegex(

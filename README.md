@@ -132,14 +132,14 @@ for drift but are not identities.
 
 The six states have these contracts:
 
-| State | Meaning | Required fields |
+| State | Meaning | Field contract |
 | --- | --- | --- |
-| `passing` | The authoritative run is an ordinary PASS. | No state-specific fields. |
-| `failing` | flpdf behavior was reached and differs from qpdf. | `rationale`, `owner`, `bead` |
-| `blocked` | A known observation boundary prevented reaching the behavior. | `rationale`, `owner`, `bead` |
-| `applicable` | The behavior is in scope but evidence cannot yet distinguish blocked from reached failure; expected-failure cases begin here. | `rationale`, `owner`, `bead` |
-| `excluded` | The behavior is outside Linux x86_64 Rust parity, such as Windows shell or C/C++ ABI behavior. | `rationale`, `replacement_ref` |
-| `represented` | The direct qtest route is outside the Rust boundary, but portable behavior has a Rust oracle test. | `rationale`, `replacement_ref` naming a Rust test |
+| `passing` | The authoritative run is an ordinary PASS. | `rationale`, `owner`, `bead`, and `replacement_ref` are `null`. |
+| `failing` | flpdf behavior was reached and differs from qpdf. | `rationale`, `owner`, and `bead` are required; `replacement_ref` is `null`. |
+| `blocked` | A known observation boundary prevented reaching the behavior. | `rationale`, `owner`, and `bead` are required; `replacement_ref` is `null`. |
+| `applicable` | The behavior is in scope but evidence cannot yet distinguish blocked from reached failure; expected-failure cases begin here. | `rationale`, `owner`, and `bead` are required; `replacement_ref` is `null`. |
+| `excluded` | The behavior is outside Linux x86_64 Rust parity, such as Windows shell or C/C++ ABI behavior. | `rationale` and `replacement_ref` are required; `owner` and `bead` are `null`. |
+| `represented` | The direct qtest route is outside the Rust boundary, but portable behavior has a Rust oracle test. | `rationale` and a Rust-test `replacement_ref` are required; `owner` and `bead` are `null`. |
 
 When present, `replacement_ref` is exactly one typed reference:
 `bead:flpdf-...`, `rust-test:<package>:<target>:<test>`, or

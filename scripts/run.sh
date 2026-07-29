@@ -53,6 +53,26 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${repo_root}"
 
+# Clear every generated artifact before binary resolution or any other
+# preflight check. A failed invocation must never leave a previous success
+# looking current.
+log="${repo_root}/harness.log"
+qtest_log="${repo_root}/qtest.log"
+qtest_xml="${repo_root}/qtest-results.xml"
+qtest_junit="${repo_root}/TEST-qtest.xml"
+summary="${repo_root}/qtest-summary.md"
+metrics="${repo_root}/qtest-metrics.jsonl"
+manifest="${repo_root}/parity/qtest-11.9.0.jsonl"
+parity_summary="${repo_root}/qtest-parity-summary.md"
+rm -f \
+    "${log}" \
+    "${qtest_log}" \
+    "${qtest_xml}" \
+    "${qtest_junit}" \
+    "${summary}" \
+    "${metrics}" \
+    "${parity_summary}"
+
 # --- locate flpdf-cli and flpdf-test-compare ---------------------------------
 #
 # Both binaries come from the same flpdf workspace, so if we're building
@@ -120,6 +140,27 @@ for bin in "${FLPDF_CLI_BIN}" "${FLPDF_TEST_COMPARE_BIN}" "${FLPDF_TEST_DRIVER_B
     fi
 done
 
+# --- isolate the vendored qtest datadir -------------------------------------
+#
+# qtest suites may write relative output beneath their datadir. Run every
+# invocation against a disposable copy so one survey cannot modify the
+# vendored corpus or affect the next survey's inputs.
+
+if ! run_tmp="$(mktemp -d)"; then
+    echo "run.sh: cannot create temporary qtest run directory" >&2
+    exit 2
+fi
+trap 'rm -rf "${run_tmp}"' EXIT
+
+qtest_source="${repo_root}/vendor/qpdf-qtest"
+qtest_datadir="${run_tmp}/qpdf-qtest"
+if ! cp -a --reflink=auto "${qtest_source}" "${qtest_datadir}"; then
+    echo \
+        "run.sh: failed to create isolated qtest datadir from ${qtest_source} (copy/reflink failed; check available space)" \
+        >&2
+    exit 2
+fi
+
 # --- prepare shim PATH -------------------------------------------------------
 #
 # Copy every executable in shim/ — not just qpdf — so any qpdf-side helper
@@ -129,8 +170,8 @@ done
 # produce spurious PASSes that don't reflect flpdf. The stubs in shim/
 # fail loudly, so survey numbers from local runs match CI.
 
-shim_bin="$(mktemp -d)"
-trap 'rm -rf "${shim_bin}"' EXIT
+shim_bin="${run_tmp}/shim"
+mkdir "${shim_bin}"
 for shim in "${repo_root}"/shim/*; do
     [[ -f "${shim}" && -x "${shim}" ]] || continue
     name="$(basename "${shim}")"
@@ -145,7 +186,7 @@ export FLPDF_QTEST_NORMALIZE="${repo_root}/normalize/stderr-rules.sed"
 
 if [[ "${QTEST_FULL:-0}" == "1" ]]; then
     mapfile -t stems < <(
-        find "${repo_root}/vendor/qpdf-qtest" -maxdepth 1 -name '*.test' \
+        find "${qtest_datadir}" -maxdepth 1 -name '*.test' \
             -printf '%f\n' | sed 's/\.test$//' | sort -u
     )
 else
@@ -160,17 +201,13 @@ else
     )
 fi
 
+if [[ "${QTEST_FULL:-0}" == "1" && ${#stems[@]} -eq 0 ]]; then
+    echo "run.sh: full qtest corpus contains no vendored .test suites" >&2
+    exit 2
+fi
+
 # --- run qtest-driver --------------------------------------------------------
 
-log="${repo_root}/harness.log"
-qtest_log="${repo_root}/qtest.log"
-qtest_xml="${repo_root}/qtest-results.xml"
-qtest_junit="${repo_root}/TEST-qtest.xml"
-summary="${repo_root}/qtest-summary.md"
-metrics="${repo_root}/qtest-metrics.jsonl"
-manifest="${repo_root}/parity/qtest-11.9.0.jsonl"
-parity_summary="${repo_root}/qtest-parity-summary.md"
-rm -f "${qtest_log}" "${qtest_xml}" "${qtest_junit}" "${summary}" "${metrics}" "${parity_summary}"
 : > "${log}"
 
 if [[ ${#stems[@]} -eq 0 ]]; then
@@ -190,7 +227,7 @@ else
     echo "==> Running qtest-driver on: ${stems[*]}"
     TESTS="${stems[*]}" \
     perl "${repo_root}/vendor/qtest/bin/qtest-driver" \
-        -datadir "${repo_root}/vendor/qpdf-qtest" \
+        -datadir "${qtest_datadir}" \
         -bindirs "${shim_bin}" \
         -stdout-tty=0 \
         2>&1 | tee -a "${log}" || true
