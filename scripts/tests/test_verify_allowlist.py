@@ -45,6 +45,16 @@ def _tmp(content: str, *, suffix: str = ".txt") -> Path:
 
 def _result(test: str, subtest: str, passed: bool, *, ordinal: int = 1):
     outcome = qtest_results.Outcome.PASS if passed else qtest_results.Outcome.FAIL
+    return _outcome_result(test, subtest, outcome, ordinal=ordinal)
+
+
+def _outcome_result(
+    test: str,
+    subtest: str,
+    outcome: qtest_results.Outcome,
+    *,
+    ordinal: int = 1,
+):
     return qtest_results.Result(
         suite=test,
         category=test,
@@ -177,6 +187,66 @@ class JudgeTest(unittest.TestCase):
         exit_code, summary = self._judge([_result("arg-parsing", "surprise", True)], "")
         self.assertEqual(exit_code, 0)
         self.assertIn("Allowlist candidates", summary)
+
+    def test_allowlisted_unexpected_pass_is_expected_pass(self) -> None:
+        exit_code, summary = self._judge(
+            [
+                _outcome_result(
+                    "arg-parsing",
+                    "unexpected",
+                    qtest_results.Outcome.UNEXPECTED_PASS,
+                )
+            ],
+            "arg-parsing:unexpected\n",
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Expected pass (allowlist PASS): **1**", summary)
+        self.assertIn("Regressions (allowlist FAIL)**: **0**", summary)
+
+    def test_allowlisted_expected_failure_is_regression(self) -> None:
+        exit_code, summary = self._judge(
+            [
+                _outcome_result(
+                    "arg-parsing",
+                    "expected failure",
+                    qtest_results.Outcome.EXPECTED_FAIL,
+                )
+            ],
+            "arg-parsing:expected failure\n",
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Expected pass (allowlist PASS): **0**", summary)
+        self.assertIn("Regressions (allowlist FAIL)**: **1**", summary)
+
+    def test_non_allowlisted_unexpected_pass_is_candidate(self) -> None:
+        exit_code, summary = self._judge(
+            [
+                _outcome_result(
+                    "arg-parsing",
+                    "unexpected",
+                    qtest_results.Outcome.UNEXPECTED_PASS,
+                )
+            ],
+            "",
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Allowlist-candidates (non-allowlist PASS): **1**", summary)
+        self.assertIn("Informational fails (non-allowlist FAIL): **0**", summary)
+
+    def test_non_allowlisted_expected_failure_is_informational(self) -> None:
+        exit_code, summary = self._judge(
+            [
+                _outcome_result(
+                    "arg-parsing",
+                    "expected failure",
+                    qtest_results.Outcome.EXPECTED_FAIL,
+                )
+            ],
+            "",
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Allowlist-candidates (non-allowlist PASS): **0**", summary)
+        self.assertIn("Informational fails (non-allowlist FAIL): **1**", summary)
 
 
 class HeadlineSummaryTest(unittest.TestCase):
@@ -373,6 +443,70 @@ class MetricsRecordTest(unittest.TestCase):
         )
         self.assertEqual(metrics["missing"], 1)
         self.assertEqual(metrics["verdict"], "FAIL")
+
+    def test_allowlisted_unexpected_pass_is_expected_pass(self) -> None:
+        metrics = self._metrics(
+            [
+                _outcome_result(
+                    "arg-parsing",
+                    "unexpected",
+                    qtest_results.Outcome.UNEXPECTED_PASS,
+                )
+            ],
+            "arg-parsing:unexpected\n",
+            commit="x",
+            timestamp="t",
+        )
+        self.assertEqual(metrics["expected_pass"], 1)
+        self.assertEqual(metrics["regressions"], 0)
+
+    def test_allowlisted_expected_failure_is_regression(self) -> None:
+        metrics = self._metrics(
+            [
+                _outcome_result(
+                    "arg-parsing",
+                    "expected failure",
+                    qtest_results.Outcome.EXPECTED_FAIL,
+                )
+            ],
+            "arg-parsing:expected failure\n",
+            commit="x",
+            timestamp="t",
+        )
+        self.assertEqual(metrics["expected_pass"], 0)
+        self.assertEqual(metrics["regressions"], 1)
+
+    def test_non_allowlisted_unexpected_pass_is_candidate(self) -> None:
+        metrics = self._metrics(
+            [
+                _outcome_result(
+                    "arg-parsing",
+                    "unexpected",
+                    qtest_results.Outcome.UNEXPECTED_PASS,
+                )
+            ],
+            "",
+            commit="x",
+            timestamp="t",
+        )
+        self.assertEqual(metrics["candidates"], 1)
+        self.assertEqual(metrics["informational"], 0)
+
+    def test_non_allowlisted_expected_failure_is_informational(self) -> None:
+        metrics = self._metrics(
+            [
+                _outcome_result(
+                    "arg-parsing",
+                    "expected failure",
+                    qtest_results.Outcome.EXPECTED_FAIL,
+                )
+            ],
+            "",
+            commit="x",
+            timestamp="t",
+        )
+        self.assertEqual(metrics["candidates"], 0)
+        self.assertEqual(metrics["informational"], 1)
 
 
 if __name__ == "__main__":
