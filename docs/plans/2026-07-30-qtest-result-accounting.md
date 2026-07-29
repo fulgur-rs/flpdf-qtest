@@ -439,7 +439,8 @@ git commit -m "refactor(qtest): share authoritative result parsing"
 - [ ] **Step 1: Add a runner contract RED test**
 
 Create `scripts/tests/test_run_contract.py` that reads `scripts/run.sh` and
-asserts one active invocation contains all three ordered arguments:
+asserts the argument array contains all three ordered positional arguments and
+the active invocation expands that array:
 
 ```python
 class RunContractTest(unittest.TestCase):
@@ -447,8 +448,12 @@ class RunContractTest(unittest.TestCase):
         script = (Path(__file__).parents[1] / "run.sh").read_text(encoding="utf-8")
         self.assertRegex(
             script,
-            r'verify-allowlist\\.py"\\s+"\\$\\{log\\}"\\s+'
-            r'"\\$\\{qtest_xml\\}"\\s+"\\$\\{repo_root\\}/allowlist\\.txt"',
+            r'verify_args=\\(\\s*"\\$\\{log\\}"\\s+"\\$\\{qtest_xml\\}"\\s+'
+            r'"\\$\\{repo_root\\}/allowlist\\.txt"',
+        )
+        self.assertRegex(
+            script,
+            r'verify-allowlist\\.py"\\s+"\\$\\{verify_args\\[@\\]\\}"',
         )
 ```
 
