@@ -27,7 +27,8 @@ tests, and implementation work.
 - Portable behavior reached through a C or platform-specific helper is
   represented by a Rust oracle test or assigned to a follow-up Bead.
 - The manifest is explicit: one JSON object per authoritative qtest subtest.
-- A subtest's identity is its suite and ordinal, not its description.
+- A subtest's identity is qtest's XML `testid` (category and ordinal), not its
+  description or enclosing `.test` filename.
 - Passing counts are measurements. They are not used to prioritize
   implementation.
 
@@ -81,15 +82,19 @@ manifest validators.
 
 Each result contains:
 
-- `suite`: the `.test` stem;
+- `suite`: the enclosing `.test` stem used for suite validity;
+- `category`: the category prefix from qtest's XML `testid`;
 - `ordinal`: the qtest subtest number;
 - `description`: the human-readable qtest description;
 - `outcome`: `pass`, `fail`, `unexpected-pass`, or `expected-fail`; and
-- `id`: the canonical `<suite>:<ordinal>` rendering.
+- `id`: qtest's canonical `<category> <ordinal>` XML `testid`.
 
-`suite + ordinal` is the identity. Descriptions remain reviewable metadata but
-are not keys because upstream legitimately repeats descriptions such as
-`check output` within one suite.
+The XML `testid` is the identity. The category usually equals the `.test`
+stem, but qpdf 11.9.0 has a verified exception:
+`weak-cryptography.test` emits category `weak-cryptography-cryptography`.
+Descriptions and suite filenames remain reviewable metadata but are not keys
+because upstream legitimately repeats descriptions such as `check output`
+within one suite and does not require category to equal suite stem.
 
 ### Inputs
 
@@ -110,8 +115,8 @@ root and child summaries count expected failures separately.
 1. Parse the XML and reject malformed roots, suites, test IDs, ordinals, or
    integer counters.
 2. Retain testcase identities only from suites with a child `<testsummary>`.
-3. Parse and deduplicate log status lines by `suite + ordinal`, retaining their
-   descriptions and expectation markers.
+3. Parse and deduplicate log status lines by `category + ordinal`, retaining
+   their descriptions and expectation markers.
 4. Restrict log results to the valid suite set from XML.
 5. Require exact identity equality between the retained XML and log results.
 6. Require description and actual pass/fail agreement for every identity.
@@ -161,16 +166,17 @@ parity/qtest-11.9.0.jsonl
 ```
 
 It contains exactly one compact JSON object per authoritative result, sorted
-by suite and numeric ordinal. A representative entry is:
+by category and numeric ordinal. A representative entry is:
 
 ```json
-{"id":"appearance-streams:1","suite":"appearance-streams","ordinal":1,"description":"generate appearances and flatten (need-appearances)","state":"blocked","rationale":"CLI option is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"appearance-streams 1","suite":"appearance-streams","category":"appearance-streams","ordinal":1,"description":"generate appearances and flatten (need-appearances)","state":"blocked","rationale":"CLI option is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
 ```
 
 Every entry has these fields:
 
-- `id`: canonical `<suite>:<ordinal>`;
-- `suite`: qtest suite stem;
+- `id`: exact qtest XML `<category> <ordinal>` test ID;
+- `suite`: enclosing qtest suite stem;
+- `category`: qtest test ID category;
 - `ordinal`: positive qtest subtest number;
 - `description`: exact description from the baseline;
 - `state`: one of the six states below;
@@ -317,7 +323,7 @@ It rejects:
 - invalid IDs or reference forms;
 - duplicate identities;
 - non-canonical ordering;
-- mismatch between `id`, `suite`, and `ordinal`;
+- mismatch between `id`, `category`, and `ordinal`;
 - missing or extra entries relative to qtest;
 - description drift;
 - missing state-specific rationale, owner, Bead, or replacement reference;
@@ -435,7 +441,8 @@ Update `README.md` with:
 
 - the full-survey parity ledger purpose;
 - the six state definitions;
-- the canonical identity rule;
+- the canonical XML `testid` identity rule and separate suite-validity
+  boundary;
 - local allowlist and manifest verification commands;
 - the entry update and promotion workflow; and
 - the provisional C API mapping reference.
