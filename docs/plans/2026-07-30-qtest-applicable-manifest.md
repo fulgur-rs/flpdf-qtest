@@ -524,8 +524,12 @@ Extend `test_run_contract.py` to require:
 self.assertIn('QTEST_FULL', script)
 self.assertRegex(
     script,
-    r'verify-parity-manifest\\.py"\\s+"\\$\\{log\\}"\\s+'
-    r'"\\$\\{qtest_xml\\}"\\s+"\\$\\{manifest\\}"',
+    r'parity_args=\\(\\s*"\\$\\{log\\}"\\s+"\\$\\{qtest_xml\\}"\\s+'
+    r'"\\$\\{manifest\\}"',
+)
+self.assertRegex(
+    script,
+    r'verify-parity-manifest\\.py"\\s+"\\$\\{parity_args\\[@\\]\\}"',
 )
 ```
 
