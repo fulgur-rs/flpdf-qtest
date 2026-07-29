@@ -10,6 +10,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -26,6 +27,12 @@ def _tmp(suffix: str, content: str) -> Path:
         mode="w", suffix=suffix, delete=False, encoding="utf-8"
     ) as f:
         f.write(textwrap.dedent(content).lstrip())
+        return Path(f.name)
+
+
+def _tmp_bytes(suffix: str, content: bytes) -> Path:
+    with tempfile.NamedTemporaryFile(mode="wb", suffix=suffix, delete=False) as f:
+        f.write(content)
         return Path(f.name)
 
 
@@ -318,6 +325,26 @@ class ParseRunTest(unittest.TestCase):
 
         self.assertEqual(run.results[0].description, "\x7fü")
 
+    def test_restores_qtest_noncharacter_byte_entities_without_rewriting_xml(self) -> None:
+        xml = _xml(
+            """
+             <testsuite file="/repo/unicode.test">
+              <testcase testid="unicode 1" description="&#xef;&#xbf;&#xbe;" outcome="fail"/>
+              <testsummary total-cases="1" passes="0" failures="1"
+               unexpected-passes="0" expected-failures="0"
+               missing-cases="0" extra-cases="0"/>
+             </testsuite>
+            """,
+            total=1,
+            passes=0,
+            failures=1,
+        )
+        log = _tmp(".log", "unicode test 1 (\ufffe) FAILED\n")
+
+        run = qtest_results.parse_run(log, xml)
+
+        self.assertEqual(run.results[0].description, "\ufffe")
+
     def test_restores_qtest_utf8_byte_entities_for_multibyte_description(self) -> None:
         xml = _xml(
             """
@@ -366,15 +393,53 @@ class ParseRunTest(unittest.TestCase):
             b'<metadata description="auto-&#xc3;&#xbc;"/></qtest-results>'
         )
 
-        restored = qtest_results._restore_qtest_description_entities(raw)
+        xml = _tmp_bytes(".xml", raw)
+        provenance = qtest_results._collect_description_provenance(xml)
 
-        self.assertIn(b'testid="auto-&#xc3;&#xbc; 1"', restored)
-        self.assertIn(b'note=\'description="auto-&#xc3;&#xbc;"\'', restored)
-        self.assertIn(b'description="auto-\xc3\xbc"', restored)
-        self.assertIn(
-            b'<metadata description="auto-&#xc3;&#xbc;"/>',
-            restored,
+        self.assertEqual(xml.read_bytes(), raw)
+        self.assertEqual(
+            provenance,
+            [
+                qtest_results._DescriptionProvenance(
+                    testid="auto-Ã¼ 1", description="auto-ü"
+                )
+            ],
         )
+
+    def test_collects_description_provenance_across_chunk_and_quote_boundaries(self) -> None:
+        raw = (
+            b'<qtest-results><testcase note=\'a > b\' '
+            b'testid="unicode 1" description="auto-&#xc3;&#xbc;" '
+            b'outcome="fail"/></qtest-results>'
+        )
+        xml = _tmp_bytes(".xml", raw)
+
+        provenance = qtest_results._collect_description_provenance(xml, chunk_size=7)
+
+        self.assertEqual(
+            provenance,
+            [
+                qtest_results._DescriptionProvenance(
+                    testid="unicode 1", description="auto-ü"
+                )
+            ],
+        )
+
+    def test_rejects_description_provenance_identity_mismatch(self) -> None:
+        root = ET.fromstring(
+            '<qtest-results><testcase testid="actual 1" description="plain"/>'
+            "</qtest-results>"
+        )
+
+        with self.assertRaisesRegex(qtest_results.ResultError, "provenance mismatch"):
+            qtest_results._apply_description_provenance(
+                root,
+                [
+                    qtest_results._DescriptionProvenance(
+                        testid="other 1", description="restored"
+                    )
+                ],
+            )
 
     def test_preserves_literal_latin1_looking_utf8_descriptions(self) -> None:
         xml = _xml(

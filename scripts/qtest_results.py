@@ -67,12 +67,10 @@ _LOG_RESULT_RE = re.compile(
     r"\((?P<description>.+)\)(?:\s+\.\.\.)?\s+"
     r"(?P<status>PASSED-UNEXP|PASSED|FAILED \(exp\)|FAILED)\s*$"
 )
-_TESTCASE_START_TAG_RE = re.compile(
-    rb"<testcase(?=[\s/>])(?:[^\"'>]+|\"[^\"]*\"|'[^']*')*>"
-)
 _ATTRIBUTE_NAME_RE = re.compile(rb"[A-Za-z_:][A-Za-z0-9_.:-]*")
-_NUMERIC_ENTITY_RUN_RE = re.compile(rb"(?:&#[xX][0-9A-Fa-f]+;)+")
-_NUMERIC_ENTITY_RE = re.compile(rb"&#[xX]([0-9A-Fa-f]+);")
+_QTEST_BYTE_ENTITY_RUN_RE = re.compile(rb"(?:&#[xX][0-9A-Fa-f]+;)+")
+_QTEST_BYTE_ENTITY_RE = re.compile(rb"&#[xX]([0-9A-Fa-f]+);")
+_XML_ENTITY_RE = re.compile(r"&(?:#(?:[xX][0-9A-Fa-f]+|[0-9]+)|amp|apos|gt|lt|quot);")
 _XML_WHITESPACE = b" \t\r\n"
 
 
@@ -107,6 +105,12 @@ class _LogCase:
     @property
     def id(self) -> str:
         return f"{self.category} {self.ordinal}"
+
+
+@dataclass(frozen=True)
+class _DescriptionProvenance:
+    testid: str
+    description: str | None
 
 
 def _counters(element: ET.Element, *, scope: str) -> _Counters:
@@ -201,72 +205,182 @@ def _validate_root_matches_children(
             )
 
 
-def _restore_qtest_description_entities(xml: bytes) -> bytes:
-    """Restore qtest's byte entities only in testcase description attributes."""
-    return _TESTCASE_START_TAG_RE.sub(_restore_testcase_description, xml)
+def _decode_xml_attribute(value: bytes) -> str:
+    """Decode an XML attribute value without applying qtest byte restoration."""
+    try:
+        text = value.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ResultError(f"malformed XML attribute: {exc}") from exc
+
+    def decode_entity(match: re.Match[str]) -> str:
+        entity = match.group()
+        if entity == "&amp;":
+            return "&"
+        if entity == "&apos;":
+            return "'"
+        if entity == "&gt;":
+            return ">"
+        if entity == "&lt;":
+            return "<"
+        if entity == "&quot;":
+            return '"'
+        number = entity[2:-1]
+        base = 16 if number[:1].lower() == "x" else 10
+        try:
+            return chr(int(number[1:] if base == 16 else number, base))
+        except ValueError:
+            return entity
+
+    return _XML_ENTITY_RE.sub(decode_entity, text)
 
 
-def _restore_testcase_description(match: re.Match[bytes]) -> bytes:
-    tag = match.group()
+def _restore_qtest_description(value: bytes) -> str | None:
+    """Decode qtest's high-byte entities in one description attribute."""
+    restored: list[str] = []
+    position = 0
+    changed = False
+    for match in _QTEST_BYTE_ENTITY_RUN_RE.finditer(value):
+        restored.append(_decode_xml_attribute(value[position : match.start()]))
+        encoded = match.group()
+        values = [
+            int(number, 16) for number in _QTEST_BYTE_ENTITY_RE.findall(encoded)
+        ]
+        if all(0x7F <= number <= 0xFF for number in values):
+            try:
+                restored.append(bytes(values).decode("utf-8"))
+                changed = True
+            except UnicodeDecodeError:
+                restored.append(_decode_xml_attribute(encoded))
+        else:
+            restored.append(_decode_xml_attribute(encoded))
+        position = match.end()
+    if not changed:
+        return None
+    restored.append(_decode_xml_attribute(value[position:]))
+    return "".join(restored)
+
+
+def _testcase_tag_end(data: bytes, start: int) -> int | None:
+    quote: int | None = None
+    for position in range(start + len(b"<testcase"), len(data)):
+        byte = data[position]
+        if quote is not None:
+            if byte == quote:
+                quote = None
+        elif byte in b"\"'":
+            quote = byte
+        elif byte == ord(">"):
+            return position
+    return None
+
+
+def _testcase_attributes(tag: bytes) -> dict[bytes, bytes]:
     position = len(b"<testcase")
-    restored = bytearray(tag[:position])
-
+    attributes: dict[bytes, bytes] = {}
     while position < len(tag):
-        attribute_start = position
         while position < len(tag) and tag[position] in _XML_WHITESPACE:
             position += 1
         if position == len(tag) or tag[position] in b"/>":
-            restored.extend(tag[attribute_start:])
-            return bytes(restored)
-
+            return attributes
         name = _ATTRIBUTE_NAME_RE.match(tag, position)
         if name is None:
-            return tag
+            raise ResultError("malformed testcase provenance")
         position = name.end()
         while position < len(tag) and tag[position] in _XML_WHITESPACE:
             position += 1
         if position == len(tag) or tag[position] != ord("="):
-            return tag
+            raise ResultError("malformed testcase provenance")
         position += 1
         while position < len(tag) and tag[position] in _XML_WHITESPACE:
             position += 1
         if position == len(tag) or tag[position] not in b"\"'":
-            return tag
-
+            raise ResultError("malformed testcase provenance")
         quote = tag[position]
         value_start = position + 1
         value_end = tag.find(bytes((quote,)), value_start)
         if value_end == -1:
-            return tag
-
-        restored.extend(tag[attribute_start:value_start])
-        value = tag[value_start:value_end]
-        if name.group() == b"description":
-            value = _NUMERIC_ENTITY_RUN_RE.sub(_restore_entity_runs, value)
-        restored.extend(value)
-        restored.extend(tag[value_end : value_end + 1])
+            raise ResultError("malformed testcase provenance")
+        attributes[name.group()] = tag[value_start:value_end]
         position = value_end + 1
+    raise ResultError("malformed testcase provenance")
 
-    return bytes(restored)
 
-
-def _restore_entity_runs(match: re.Match[bytes]) -> bytes:
-    encoded = match.group()
-    values = [int(value, 16) for value in _NUMERIC_ENTITY_RE.findall(encoded)]
-    if not all(0x7F <= value <= 0xFF for value in values):
-        return encoded
+def _collect_description_provenance(
+    xml_path: Path, *, chunk_size: int = 64 * 1024
+) -> list[_DescriptionProvenance]:
+    """Collect only testcase description metadata without copying the XML file."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    cases: list[_DescriptionProvenance] = []
+    marker = b"<testcase"
+    buffer = b""
     try:
-        return bytes(values).decode("utf-8").encode("utf-8")
-    except UnicodeDecodeError:
-        return encoded
+        with xml_path.open("rb") as xml:
+            while chunk := xml.read(chunk_size):
+                buffer += chunk
+                position = 0
+                while True:
+                    start = buffer.find(marker, position)
+                    if start == -1:
+                        buffer = buffer[-(len(marker) - 1) :]
+                        break
+                    after_marker = start + len(marker)
+                    if after_marker == len(buffer):
+                        buffer = buffer[start:]
+                        break
+                    if buffer[after_marker] not in _XML_WHITESPACE + b"/>":
+                        position = after_marker
+                        continue
+                    end = _testcase_tag_end(buffer, start)
+                    if end is None:
+                        buffer = buffer[start:]
+                        break
+                    attributes = _testcase_attributes(buffer[start : end + 1])
+                    raw_description = attributes.get(b"description")
+                    cases.append(
+                        _DescriptionProvenance(
+                            testid=_decode_xml_attribute(
+                                attributes.get(b"testid", b"")
+                            ),
+                            description=(
+                                _restore_qtest_description(raw_description)
+                                if raw_description is not None
+                                else None
+                            ),
+                        )
+                    )
+                    position = end + 1
+    except OSError as exc:
+        raise ResultError(f"malformed XML: {exc}") from exc
+    return cases
 
 
 def _parse_xml(xml_path: Path) -> ET.Element:
     try:
-        xml = _restore_qtest_description_entities(xml_path.read_bytes())
-        return ET.fromstring(xml)
+        return ET.parse(xml_path).getroot()
     except (ET.ParseError, OSError) as exc:
         raise ResultError(f"malformed XML: {exc}") from exc
+
+
+def _apply_description_provenance(
+    root: ET.Element, provenance: list[_DescriptionProvenance]
+) -> None:
+    cases = list(root.iter("testcase"))
+    if len(cases) != len(provenance):
+        raise ResultError("XML testcase provenance mismatch: testcase count")
+    for position, (case, raw_case) in enumerate(zip(cases, provenance), start=1):
+        if case.attrib.get("testid", "") != raw_case.testid:
+            raise ResultError(
+                "XML testcase provenance mismatch: "
+                f"testid at position {position}"
+            )
+        if raw_case.description is not None:
+            if "description" not in case.attrib:
+                raise ResultError(
+                    "XML testcase provenance mismatch: "
+                    f"description at position {position}"
+                )
+            case.attrib["description"] = raw_case.description
 
 
 def _parse_xml_case(case: ET.Element, suite: str) -> _XmlCase:
@@ -308,9 +422,11 @@ def _parse_log_case(match: re.Match[str]) -> _LogCase:
 
 def parse_run(log_path: Path, xml_path: Path) -> RunResults:
     """Join the harness log to the XML result set from one qtest invocation."""
+    provenance = _collect_description_provenance(xml_path)
     root = _parse_xml(xml_path)
     if root.tag != "qtest-results":
         raise ResultError(f"malformed XML: unexpected root {root.tag!r}")
+    _apply_description_provenance(root, provenance)
 
     root_summaries = root.findall("./testsummary")
     if len(root_summaries) != 1:
