@@ -82,6 +82,13 @@ class RunContractTest(unittest.TestCase):
 
     def _assert_parity_ledger_maintenance_contract(self, section: str) -> None:
         self.assertIn("parity/qtest-11.9.0.jsonl", section)
+        self.assertRegex(
+            section,
+            r"This\s+checked-in\s+ledger\s+is\s+owned\s+by\s+"
+            r"`flpdf-qtest`\s+because\s+it\s+consumes\s+the\s+harness's\s+"
+            r"same-run\s+qtest\s+artifacts\s+and\s+owns\s+the\s+CI\s+"
+            r"validation\s+boundary\.",
+        )
         self.assertIn("qtest XML `testid`", section)
         self.assertIn("weak-cryptography-cryptography 1", section)
         self.assertIn("suite is `weak-cryptography`", section)
@@ -110,6 +117,44 @@ class RunContractTest(unittest.TestCase):
             section,
             r"Pass counts and state counts are measured survey output, not\s+"
             r"implementation\s+priorities\.",
+        )
+        self.assertRegex(
+            section,
+            r"`harness\.log`\s+and\s+`qtest-results\.xml`\s+must\s+come\s+"
+            r"from\s+the\s+same\s+full\s+run\s+and\s+both\s+validators\s+"
+            r"consume\s+that\s+pair\.",
+        )
+        self.assertRegex(
+            section,
+            r"A\s+parity\s+parser\s+error\s+produces\s+no\s+parity\s+"
+            r"summary;\s+a\s+validation\s+error\s+produces\s+only\s+a\s+"
+            r"FAIL\s+verdict\.\s+Neither\s+is\s+successful\s+update\s+"
+            r"evidence\.",
+        )
+        self.assertRegex(
+            section,
+            r"A\s+partial\s+or\s+failed\s+run\s+is\s+not\s+"
+            r"ledger-update\s+evidence\.",
+        )
+        self.assertIn(
+            "keep the JSONL sorted by category and numeric ordinal", section
+        )
+        self.assertRegex(
+            section,
+            r"For\s+any\s+state\s+change,\s+update\s+the\s+required\s+"
+            r"`owner`\s+and\s+`bead`\s+for\s+`applicable`,\s+`blocked`,\s+"
+            r"or\s+`failing`,\s+or\s+the\s+`replacement_ref`\s+for\s+"
+            r"`excluded`\s+or\s+`represented`\.",
+        )
+        self.assertRegex(
+            section,
+            r"The validator rejects stale `passing`, `blocked`, and `failing`\s+"
+            r"classifications\.",
+        )
+        self.assertRegex(
+            section,
+            r"A `blocked` or `failing` row that becomes an ordinary PASS\s+"
+            r"requires promotion to `passing`\.",
         )
         self.assertNotIn("QTEST_TESTS", section)
 
@@ -186,6 +231,54 @@ class RunContractTest(unittest.TestCase):
                 "c-api-bead-inversion",
                 "`bead:flpdf-25kg.2.1`",
                 "`bead:flpdf-25kg.2.2`",
+                maintenance_check,
+            ),
+            (
+                "ledger-ownership-inversion",
+                "same-run qtest artifacts",
+                "mixed-run qtest artifacts",
+                maintenance_check,
+            ),
+            (
+                "paired-artifact-consumer-deletion",
+                "both validators consume that pair.",
+                "only one validator consumes that pair.",
+                maintenance_check,
+            ),
+            (
+                "parser-validation-success-evidence-inversion",
+                "Neither is successful update evidence.",
+                "This is successful update evidence.",
+                maintenance_check,
+            ),
+            (
+                "failed-run-evidence-inversion",
+                "failed run is not ledger-update evidence.",
+                "failed run is ledger-update evidence.",
+                maintenance_check,
+            ),
+            (
+                "ledger-ordering-inversion",
+                "sorted by category and numeric ordinal",
+                "unsorted by category and numeric ordinal",
+                maintenance_check,
+            ),
+            (
+                "state-reference-update-inversion",
+                "For any state change",
+                "For no state change",
+                maintenance_check,
+            ),
+            (
+                "stale-state-rejection-inversion",
+                "The validator rejects stale",
+                "The validator accepts stale",
+                maintenance_check,
+            ),
+            (
+                "required-promotion-inversion",
+                "requires promotion to `passing`.",
+                "requires no promotion to `passing`.",
                 maintenance_check,
             ),
             (

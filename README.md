@@ -98,10 +98,10 @@ Useful env knobs:
 
 ## Parity ledger maintenance
 
-`parity/qtest-11.9.0.jsonl` is this repository's explicit parity ledger. It
-lives in `flpdf-qtest` because this harness owns the qpdf 11.9.0 full-corpus
-observation, the paired result artifacts, and the classification boundary;
-the `flpdf` repository owns the implementation work those rows reference.
+`parity/qtest-11.9.0.jsonl` is this repository's explicit parity ledger. This
+checked-in ledger is owned by `flpdf-qtest` because it consumes the harness's
+same-run qtest artifacts and owns the CI validation boundary. The `flpdf`
+repository owns the implementation work those rows reference.
 There is exactly one JSON object for every authoritative qtest subtest, sorted
 by category and numeric ordinal. It is not an allowlist and has no wildcard,
 suite-wide default, or implicit catch-all.
@@ -115,6 +115,10 @@ qtest starts, since a subset cannot validate the ledger. With an empty
 allowlist, leaving `QTEST_FULL` unset performs only the supported qtest-driver
 dry-run; it executes no subtests and therefore has no subtest result set or
 parity-manifest validation.
+
+`harness.log` and `qtest-results.xml` must come from the same full run and
+both validators consume that pair. Do not combine artifacts from different
+runs.
 
 ### Identity and fields
 
@@ -154,17 +158,21 @@ python3 scripts/verify-parity-manifest.py \
 
 `scripts/run.sh` already runs this validator after the allowlist verifier, so
 the command is useful for inspecting an existing full-run artifact pair. A
-parse, schema, identity, ordering, required-field, or stale-outcome error is
-an operational failure: keep the paired artifacts, correct the cause, and
-rerun the full command rather than treating a partial run as evidence.
+parity parser error produces no parity summary; a validation error produces
+only a FAIL verdict. Neither is successful update evidence. A partial or
+failed run is not ledger-update evidence. Keep the paired artifacts, correct
+the cause, and rerun the full command.
 
 When qtest or flpdf changes, run the full corpus, classify every changed row,
 and keep the JSONL sorted by category and numeric ordinal. If a `blocked` or
 `failing` row becomes an ordinary PASS, promote it to `passing` in the same
-update; the validator deliberately rejects the stale classification. Update
-the linked Bead, Rust-test, or scope reference when ownership or replacement
-coverage changes. `excluded` and `represented` are scope classifications, so
-an outcome change alone does not promote them.
+update. The validator rejects stale `passing`, `blocked`, and `failing`
+classifications. A `blocked` or `failing` row that becomes an ordinary PASS
+requires promotion to `passing`. For any state change, update the required
+`owner` and `bead` for `applicable`, `blocked`, or `failing`, or the
+`replacement_ref` for `excluded` or `represented`. `excluded` and
+`represented` are scope classifications, so an outcome change alone does not
+promote them.
 
 Pass counts and state counts are measured survey output, not implementation
 priorities. Use root-cause evidence and the referenced Bead or Rust test to
