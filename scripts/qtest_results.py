@@ -253,7 +253,7 @@ def _restore_testcase_description(match: re.Match[bytes]) -> bytes:
 def _restore_entity_runs(match: re.Match[bytes]) -> bytes:
     encoded = match.group()
     values = [int(value, 16) for value in _NUMERIC_ENTITY_RE.findall(encoded)]
-    if not all(0x80 <= value <= 0xFF for value in values):
+    if not all(0x7F <= value <= 0xFF for value in values):
         return encoded
     try:
         return bytes(values).decode("utf-8").encode("utf-8")

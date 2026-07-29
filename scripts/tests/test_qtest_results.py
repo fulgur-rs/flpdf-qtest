@@ -298,6 +298,26 @@ class ParseRunTest(unittest.TestCase):
 
         self.assertEqual(run.results[0].description, "auto-ü")
 
+    def test_restores_qtest_del_and_utf8_byte_entities(self) -> None:
+        xml = _xml(
+            """
+             <testsuite file="/repo/unicode.test">
+              <testcase testid="unicode 1" description="&#x7f;&#xc3;&#xbc;" outcome="fail"/>
+              <testsummary total-cases="1" passes="0" failures="1"
+               unexpected-passes="0" expected-failures="0"
+               missing-cases="0" extra-cases="0"/>
+             </testsuite>
+            """,
+            total=1,
+            passes=0,
+            failures=1,
+        )
+        log = _tmp(".log", "unicode test 1 (\x7fü) FAILED\n")
+
+        run = qtest_results.parse_run(log, xml)
+
+        self.assertEqual(run.results[0].description, "\x7fü")
+
     def test_restores_qtest_utf8_byte_entities_for_multibyte_description(self) -> None:
         xml = _xml(
             """
