@@ -228,20 +228,19 @@ class RunResults:
     invalid_suites: tuple[str, ...]
 ```
 
-Implement `parse_run(log_path: Path, xml_path: Path) -> RunResults` in this order:
+Implement only the minimum `parse_run(log_path: Path, xml_path: Path) ->
+RunResults` behavior required by the two initial tests:
 
 1. parse the XML root;
 2. identify each suite stem from `Path(file).stem`;
 3. treat a suite with no direct child `testsummary` as invalid;
 4. split each retained `testid` with `rsplit(" ", 1)`;
-5. parse log status lines including `PASSED`, `FAILED`, `FAILED (exp)`, and `PASSED-UNEXP`;
-6. deduplicate repeated log lines only when the same identity, description, actual outcome, and expectation marker agree;
-7. filter log identities by valid XML identities;
-8. join XML actual outcome with the log expectation marker;
-9. compare child and root counters; and
-10. return results sorted by `(category, ordinal)`.
+5. parse ordinary `PASSED` and `FAILED` log status lines;
+6. filter log identities by valid XML identities; and
+7. return results sorted by `(category, ordinal)`.
 
-Use `ResultError` for malformed XML, invalid IDs, duplicate identities, conflicting repeated log records, XML/log identity drift, description drift, outcome drift, or count drift.
+Define `ResultError` now, but defer the other outcome branches, deduplication,
+drift checks, and counter validation until after the expanded RED tests.
 
 - [ ] **Step 4: Run the focused tests to verify GREEN**
 
@@ -295,7 +294,18 @@ python3 -m unittest scripts/tests/test_qtest_results.py -v
 
 Expected before completion: the first newly added unsupported outcome or mismatch test fails.
 
-Implement only the branches required by those tests, then rerun the same command until all pass.
+Implement only the branches required by those tests:
+
+1. parse `FAILED (exp)` and `PASSED-UNEXP`;
+2. deduplicate repeated log lines only when the same identity, description,
+   actual outcome, and expectation marker agree;
+3. join XML actual outcome with the log expectation marker;
+4. compare child and root counters; and
+5. raise `ResultError` for malformed XML, invalid IDs, duplicate identities,
+   conflicting repeated log records, XML/log identity drift, description
+   drift, outcome drift, or count drift.
+
+Then rerun the same command until all pass.
 
 - [ ] **Step 7: Commit the authoritative parser**
 

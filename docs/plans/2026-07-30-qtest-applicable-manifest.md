@@ -250,29 +250,24 @@ invalid JSON and duplicate identities with `path:line` diagnostics, and
 returns entries in file order. Blank lines are rejected so physical line
 number equals entry number.
 
-- [ ] **Step 4: Implement state contracts and reference validation**
+- [ ] **Step 4: Implement state-field contracts and reference validation**
 
-`validate_manifest(run, entries)` must enforce:
+Implement only the state-field and replacement-reference behavior covered by
+the initial RED tests:
 
-```python
-identity = f"{entry.category} {entry.ordinal}"
-if entry.id != identity:
-    errors.append(f"{entry.id}: id must be {identity!r}")
-```
-
-Required contracts:
-
-| State | Required | Forbidden outcome transition |
-|---|---|---|
-| `passing` | no extra ownership fields | any outcome except ordinary `pass` |
-| `failing` | rationale, owner, bead | ordinary `pass` |
-| `blocked` | rationale, owner, bead | ordinary `pass` |
-| `applicable` | rationale, owner, bead | none |
-| `excluded` | rationale, replacement_ref | none |
-| `represented` | rationale, `rust-test:` replacement_ref | none |
+| State | Required |
+|---|---|
+| `passing` | no extra ownership fields |
+| `failing` | rationale, owner, bead |
+| `blocked` | rationale, owner, bead |
+| `applicable` | rationale, owner, bead |
+| `excluded` | rationale, replacement_ref |
+| `represented` | rationale, `rust-test:` replacement_ref |
 
 For `excluded`, allow `bead:`, `rust-test:`, or `scope:`. For `represented`,
 allow only `rust-test:`. Validate Beads with `^flpdf-[a-z0-9]+(?:\.[0-9]+)*$`.
+Defer identity-set, metadata-drift, ordering, counts, and stale-outcome
+validation until after the next RED step.
 
 - [ ] **Step 5: Add RED tests for identity-set and stale-outcome errors**
 
@@ -299,7 +294,27 @@ python3 -m unittest scripts/tests/test_verify_parity_manifest.py -v
 ```
 
 Expected before completion: the first new identity or transition test fails.
-Complete only the required validation branches, then rerun until all pass.
+Complete only the required validation branches:
+
+```python
+identity = f"{entry.category} {entry.ordinal}"
+if entry.id != identity:
+    errors.append(f"{entry.id}: id must be {identity!r}")
+```
+
+Enforce these forbidden outcome transitions:
+
+| State | Forbidden outcome transition |
+|---|---|
+| `passing` | any outcome except ordinary `pass` |
+| `failing` | ordinary `pass` |
+| `blocked` | ordinary `pass` |
+| `applicable` | none |
+| `excluded` | none |
+| `represented` | none |
+
+Also implement the tested identity-set, metadata-drift, ordering, and count
+checks, then rerun until all pass.
 
 - [ ] **Step 7: Implement summary and CLI tests**
 
@@ -591,7 +606,26 @@ git commit -m "ci(qtest): gate full survey with parity manifest"
 **Interfaces:**
 - Documents: scope, identity, state contracts, update commands, staged C API mapping
 
-- [ ] **Step 1: Add the parity-ledger section**
+- [ ] **Step 1: Add a documentation contract RED test**
+
+In `test_run_contract.py`, assert README contains:
+
+```text
+parity/qtest-11.9.0.jsonl
+weak-cryptography-cryptography
+bead:flpdf-25kg.2.1
+QTEST_FULL=1
+```
+
+- [ ] **Step 2: Run the focused contract test to verify RED**
+
+```bash
+python3 -m unittest scripts/tests/test_run_contract.py -v
+```
+
+Expected: at least the first new README contract assertion fails.
+
+- [ ] **Step 3: Add the parity-ledger section**
 
 Document:
 
@@ -605,18 +639,7 @@ Document:
 - full local validation command; and
 - the fact that pass counts are measurements.
 
-- [ ] **Step 2: Add a documentation contract test**
-
-In `test_run_contract.py`, assert README contains:
-
-```text
-parity/qtest-11.9.0.jsonl
-weak-cryptography-cryptography
-bead:flpdf-25kg.2.1
-QTEST_FULL=1
-```
-
-- [ ] **Step 3: Run the full Python suite**
+- [ ] **Step 4: Run the full Python suite**
 
 ```bash
 python3 -m unittest discover -s scripts/tests -p 'test_*.py'
@@ -624,7 +647,7 @@ python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
 Expected: all pass.
 
-- [ ] **Step 4: Commit documentation**
+- [ ] **Step 5: Commit documentation**
 
 ```bash
 git add README.md scripts/tests/test_run_contract.py
