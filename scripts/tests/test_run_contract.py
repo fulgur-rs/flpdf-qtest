@@ -48,6 +48,28 @@ class RunContractTest(unittest.TestCase):
     def test_runner_exposes_no_subset_selection_interface(self) -> None:
         self.assertNotIn("QTEST_TESTS", self.script)
 
+    def test_readme_documents_parity_ledger_contract(self) -> None:
+        readme = (_ROOT / "README.md").read_text(encoding="utf-8")
+
+        for contract in (
+            "parity/qtest-11.9.0.jsonl",
+            "weak-cryptography-cryptography",
+            "bead:flpdf-25kg.2.1",
+            "QTEST_FULL=1",
+        ):
+            with self.subTest(contract=contract):
+                self.assertIn(contract, readme)
+
+    def test_readme_documents_only_full_nonempty_runs(self) -> None:
+        readme = (_ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("QTEST_TESTS", readme)
+        self.assertIn("QTEST_FULL=1", readme)
+        self.assertIn("non-empty", readme)
+        self.assertIn("full corpus", readme)
+        self.assertIn("empty allowlist", readme)
+        self.assertIn("dry-run", readme)
+
     def test_nonempty_run_requires_qtest_result_xml_before_verification(self) -> None:
         self.assertIn('qtest_xml="${repo_root}/qtest-results.xml"', self.script)
         run_section = self.script.split(
