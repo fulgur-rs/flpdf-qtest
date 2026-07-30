@@ -78,6 +78,13 @@ class RunExecutionTest(unittest.TestCase):
                 }
 
                 my $mode = $ENV{"FAKE_QTEST_MODE"} // "";
+                open my $helper_env, ">", "received-helper-env.txt" or die $!;
+                print {$helper_env}
+                    ($ENV{"FLPDF_TEST_PDF_DOC_ENCODING_BIN"} // ""),
+                    "\n",
+                    ($ENV{"FLPDF_TEST_PDF_UNICODE_BIN"} // ""),
+                    "\n";
+                close $helper_env;
                 my $datadir = "";
                 for (my $i = 0; $i < scalar(@ARGV); ++$i) {
                     if ($ARGV[$i] eq "-datadir") {
@@ -203,6 +210,8 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_CLI_BIN": str(self.fake_binary),
                 "FLPDF_TEST_COMPARE_BIN": str(self.fake_binary),
                 "FLPDF_TEST_DRIVER_BIN": str(self.fake_binary),
+                "FLPDF_TEST_PDF_DOC_ENCODING_BIN": str(self.fake_binary),
+                "FLPDF_TEST_PDF_UNICODE_BIN": str(self.fake_binary),
                 "FAKE_QTEST_MODE": mode,
             }
         )
@@ -256,6 +265,102 @@ class RunExecutionTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 2)
         self.assertIn(f"{nonexecuting} is not executable", completed.stderr)
         self._assert_generated_absent()
+
+    def test_missing_pdf_doc_encoding_binary_fails_before_qtest(self) -> None:
+        completed = self._run(
+            "unused",
+            env_overrides={"FLPDF_TEST_PDF_DOC_ENCODING_BIN": None},
+        )
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn(
+            "cannot locate flpdf-test-pdf-doc-encoding",
+            completed.stderr,
+        )
+        self.assertFalse((self.repo / "received-tests.txt").exists())
+        self._assert_generated_absent()
+
+    def test_nonexecuting_pdf_unicode_binary_fails_before_qtest(self) -> None:
+        nonexecuting = self.repo / "nonexecuting-pdf-unicode"
+        nonexecuting.write_text("not executable\n", encoding="utf-8")
+
+        completed = self._run(
+            "unused",
+            env_overrides={
+                "FLPDF_TEST_PDF_UNICODE_BIN": str(nonexecuting),
+            },
+        )
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn(f"{nonexecuting} is not executable", completed.stderr)
+        self.assertFalse((self.repo / "received-tests.txt").exists())
+        self._assert_generated_absent()
+
+    def test_flpdf_dir_builds_and_exports_character_helpers(self) -> None:
+        flpdf_dir = self.repo / "flpdf-checkout"
+        release_dir = flpdf_dir / "target" / "release"
+        release_dir.mkdir(parents=True)
+        fake_tools = self.repo / "fake-build-tools"
+        fake_tools.mkdir()
+        fake_cargo = fake_tools / "cargo"
+        fake_cargo.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -eu\n"
+            "printf '%s\\n' \"$@\" > \"$FLPDF_DIR/cargo-args.txt\"\n"
+            "for name in flpdf flpdf-test-compare flpdf-test-driver "
+            "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode; do\n"
+            "  printf '#!/usr/bin/env sh\\nexit 0\\n' "
+            "> \"$FLPDF_DIR/target/release/$name\"\n"
+            "  chmod +x \"$FLPDF_DIR/target/release/$name\"\n"
+            "done\n",
+            encoding="utf-8",
+        )
+        fake_cargo.chmod(fake_cargo.stat().st_mode | stat.S_IXUSR)
+
+        completed = self._run(
+            "valid-only",
+            full=True,
+            env_overrides={
+                "FLPDF_CLI_BIN": None,
+                "FLPDF_TEST_COMPARE_BIN": None,
+                "FLPDF_TEST_DRIVER_BIN": None,
+                "FLPDF_TEST_PDF_DOC_ENCODING_BIN": None,
+                "FLPDF_TEST_PDF_UNICODE_BIN": None,
+                "FLPDF_DIR": str(flpdf_dir),
+                "PATH": f"{fake_tools}:{os.environ['PATH']}",
+            },
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        cargo_args = (flpdf_dir / "cargo-args.txt").read_text(
+            encoding="utf-8"
+        ).splitlines()
+        self.assertEqual(
+            cargo_args,
+            [
+                "build",
+                "--release",
+                "--bin",
+                "flpdf",
+                "--bin",
+                "flpdf-test-compare",
+                "--bin",
+                "flpdf-test-driver",
+                "--bin",
+                "flpdf-test-pdf-doc-encoding",
+                "--bin",
+                "flpdf-test-pdf-unicode",
+            ],
+        )
+        self.assertEqual(
+            (self.repo / "received-helper-env.txt")
+            .read_text(encoding="utf-8")
+            .splitlines(),
+            [
+                str(release_dir / "flpdf-test-pdf-doc-encoding"),
+                str(release_dir / "flpdf-test-pdf-unicode"),
+            ],
+        )
 
     def test_isolated_datadir_copy_failure_is_diagnostic_and_fail_closed(
         self,

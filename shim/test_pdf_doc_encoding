@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#
+# shim/test_pdf_doc_encoding — route qpdf's historical character-encoding
+# helper name to flpdf-test-pdf-doc-encoding.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_PDF_DOC_ENCODING_BIN:-}" ]]; then
+    echo "shim/test_pdf_doc_encoding: FLPDF_TEST_PDF_DOC_ENCODING_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_PDF_DOC_ENCODING_BIN}" ]]; then
+    echo "shim/test_pdf_doc_encoding: FLPDF_TEST_PDF_DOC_ENCODING_BIN=${FLPDF_TEST_PDF_DOC_ENCODING_BIN} is not executable" >&2
+    exit 127
+fi
+
+if [[ -n "${FLPDF_QTEST_NORMALIZE:-}" && -r "${FLPDF_QTEST_NORMALIZE}" ]]; then
+    exec -a test_pdf_doc_encoding \
+        "${FLPDF_TEST_PDF_DOC_ENCODING_BIN}" "$@" \
+        2> >(sed -f "${FLPDF_QTEST_NORMALIZE}" 1>&2)
+fi
+
+exec -a test_pdf_doc_encoding "${FLPDF_TEST_PDF_DOC_ENCODING_BIN}" "$@"
