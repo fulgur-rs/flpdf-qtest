@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#
+# shim/test_unicode_filenames — route qpdf's historical unicode-filenames
+# helper name to flpdf-test-unicode-filenames.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_UNICODE_FILENAMES_BIN:-}" ]]; then
+    echo "shim/test_unicode_filenames: FLPDF_TEST_UNICODE_FILENAMES_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_UNICODE_FILENAMES_BIN}" ]]; then
+    echo "shim/test_unicode_filenames: FLPDF_TEST_UNICODE_FILENAMES_BIN=${FLPDF_TEST_UNICODE_FILENAMES_BIN} is not executable" >&2
+    exit 127
+fi
+
+if [[ -n "${FLPDF_QTEST_NORMALIZE:-}" && -r "${FLPDF_QTEST_NORMALIZE}" ]]; then
+    exec -a test_unicode_filenames \
+        "${FLPDF_TEST_UNICODE_FILENAMES_BIN}" "$@" \
+        2> >(sed -f "${FLPDF_QTEST_NORMALIZE}" 1>&2)
+fi
+
+exec -a test_unicode_filenames "${FLPDF_TEST_UNICODE_FILENAMES_BIN}" "$@"
