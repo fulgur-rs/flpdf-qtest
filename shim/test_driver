@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#
+# shim/test_driver — placed on PATH ahead of any real qpdf test_driver
+# so that .test files invoking `test_driver N INPUT [ARG2]` are routed
+# to flpdf-test-driver, the Rust port that lives under flpdf's
+# crates/flpdf-qtest-tools (bin: flpdf-test-driver).
+#
+# The CLI contract is identical to qpdf's test_driver.cc: the first
+# argument is an integer test id, the second a PDF filename, and an
+# optional third argument passed to the specific test. Argv is
+# forwarded unchanged.
+#
+# Required env:
+#   FLPDF_TEST_DRIVER_BIN   — absolute path to the flpdf-test-driver
+#                             binary to delegate to.
+#
+# Optional env:
+#   FLPDF_QTEST_NORMALIZE   — when set to a sed script path, stderr is
+#                             filtered through it (same channel as
+#                             shim/qpdf and shim/qpdf-test-compare).
+
+set -u
+
+if [[ -z "${FLPDF_TEST_DRIVER_BIN:-}" ]]; then
+    echo "shim/test_driver: FLPDF_TEST_DRIVER_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_DRIVER_BIN}" ]]; then
+    echo "shim/test_driver: FLPDF_TEST_DRIVER_BIN=${FLPDF_TEST_DRIVER_BIN} is not executable" >&2
+    exit 127
+fi
+
+if [[ -n "${FLPDF_QTEST_NORMALIZE:-}" && -r "${FLPDF_QTEST_NORMALIZE}" ]]; then
+    exec "${FLPDF_TEST_DRIVER_BIN}" "$@" 2> >(sed -f "${FLPDF_QTEST_NORMALIZE}" 1>&2)
+fi
+
+exec "${FLPDF_TEST_DRIVER_BIN}" "$@"

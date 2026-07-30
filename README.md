@@ -53,31 +53,130 @@ flpdf-qtest/
 └── .github/workflows/ci.yml   # push / PR / weekly / workflow_dispatch
 ```
 
+## Outputs
+
+For every non-empty qtest run, `harness.log` and `qtest-results.xml` are a
+required pair from the same invocation. The log records qtest's human-readable
+outcomes while the XML provides its authoritative per-subtest result set;
+`verify-allowlist.py` reconciles both before it writes `qtest-summary.md` and
+`qtest-metrics.jsonl`. `TEST-qtest.xml` is qtest's accompanying JUnit artifact.
+
+Subsidiary suites without their own qtest summary are excluded from parsing,
+exactly as qtest excludes them from its root summary. Do not combine the log or
+XML from different runs: doing so is rejected as an inconsistent result set.
+
 ## Running locally
 
 ```bash
-# Build both binaries the harness needs. Select them by binary name so an
+# Build all three binaries the harness needs. Select them by binary name so an
 # flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
-cargo build --release --bin flpdf --bin flpdf-test-compare
+cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver
 
 # Then drive qtest.
 cd /path/to/flpdf-qtest
 FLPDF_CLI_BIN=/path/to/flpdf/target/release/flpdf \
 FLPDF_TEST_COMPARE_BIN=/path/to/flpdf/target/release/flpdf-test-compare \
+FLPDF_TEST_DRIVER_BIN=/path/to/flpdf/target/release/flpdf-test-driver \
+QTEST_FULL=1 \
   ./scripts/run.sh
 ```
 
+A full run leaves `harness.log`, `qtest-results.xml`, and `TEST-qtest.xml` in
+the repository root. Keep `harness.log` and `qtest-results.xml` together when
+inspecting or sharing a result: both validators derive their verdicts from
+that paired artifact set.
+
 Useful env knobs:
 
-- `QTEST_TESTS="arg-parsing deterministic-id"` — restrict to specific
-  `.test` stems instead of "everything mentioned in allowlist.txt".
-- `QTEST_FULL=1` — run every `*.test` in `vendor/qpdf-qtest/`. Most will
-  fail until flpdf grows qpdf-CLI compatibility; useful for surveying.
-- `FLPDF_DIR=/path/to/flpdf` — if either `FLPDF_CLI_BIN` or
-  `FLPDF_TEST_COMPARE_BIN` is unset, build both `flpdf` and
-  `flpdf-test-compare` in that checkout, using the built path for each
-  binary whose environment variable is unset.
+- `QTEST_FULL=1` — run every `*.test` in `vendor/qpdf-qtest/`; required for
+  every non-empty run and for parity validation.
+- `FLPDF_DIR=/path/to/flpdf` — if any of `FLPDF_CLI_BIN`,
+  `FLPDF_TEST_COMPARE_BIN`, or `FLPDF_TEST_DRIVER_BIN` is unset, build
+  `flpdf`, `flpdf-test-compare`, and `flpdf-test-driver` in that checkout,
+  using the built path for each binary whose environment variable is unset.
+
+## Parity ledger maintenance
+
+`parity/qtest-11.9.0.jsonl` is this repository's explicit parity ledger. This
+checked-in ledger is owned by `flpdf-qtest` because it consumes the harness's
+same-run qtest artifacts and owns the CI validation boundary. The `flpdf`
+repository owns the implementation work those rows reference.
+There is exactly one JSON object for every authoritative qtest subtest, sorted
+by category and numeric ordinal. It is not an allowlist and has no wildcard,
+suite-wide default, or implicit catch-all.
+
+### Full-run scope
+
+`QTEST_FULL=1` is required for every non-empty full corpus run. It runs the
+full corpus and validates both the acceptance allowlist and the complete
+parity ledger. A non-empty allowlist without `QTEST_FULL=1` is rejected before
+qtest starts, since a subset cannot validate the ledger. With an empty
+allowlist, leaving `QTEST_FULL` unset performs only the supported qtest-driver
+dry-run; it executes no subtests and therefore has no subtest result set or
+parity-manifest validation.
+
+`harness.log` and `qtest-results.xml` must come from the same full run and
+both validators consume that pair. Do not combine artifacts from different
+runs.
+
+### Identity and fields
+
+The canonical identity is qtest XML `testid`: `<category> <ordinal>`. The
+enclosing `.test` suite stem is separate metadata, not part of that identity.
+For example, `weak-cryptography-cryptography 1` has category
+`weak-cryptography-cryptography` while its suite is `weak-cryptography`.
+Each row records `id`, `suite`, `category`, `ordinal`, `description`, `state`,
+`rationale`, `owner`, `bead`, and `replacement_ref`; descriptions are checked
+for drift but are not identities.
+
+The six states have these contracts:
+
+| State | Meaning | Field contract |
+| --- | --- | --- |
+| `passing` | The authoritative run is an ordinary PASS. | `rationale`, `owner`, `bead`, and `replacement_ref` are `null`. |
+| `failing` | flpdf behavior was reached and differs from qpdf. | `rationale`, `owner`, and `bead` are required; `replacement_ref` is `null`. |
+| `blocked` | A known observation boundary prevented reaching the behavior. | `rationale`, `owner`, and `bead` are required; `replacement_ref` is `null`. |
+| `applicable` | The behavior is in scope but evidence cannot yet distinguish blocked from reached failure; expected-failure cases begin here. | `rationale`, `owner`, and `bead` are required; `replacement_ref` is `null`. |
+| `excluded` | The behavior is outside Linux x86_64 Rust parity, such as Windows shell or C/C++ ABI behavior. | `rationale` and `replacement_ref` are required; `owner` and `bead` are `null`. |
+| `represented` | The direct qtest route is outside the Rust boundary, but portable behavior has a Rust oracle test. | `rationale` and a Rust-test `replacement_ref` are required; `owner` and `bead` are `null`. |
+
+When present, `replacement_ref` is exactly one typed reference:
+`bead:flpdf-...`, `rust-test:<package>:<target>:<test>`, or
+`scope:<document>#<section>`. C API rows temporarily use
+`bead:flpdf-25kg.2.1` while that inventory maps them to a concrete Rust oracle
+test or fixed ABI-only scope reference.
+
+### Validate and update
+
+After a full run, validate the paired artifacts and ledger explicitly:
+
+```bash
+python3 scripts/verify-parity-manifest.py \
+  harness.log qtest-results.xml parity/qtest-11.9.0.jsonl
+```
+
+`scripts/run.sh` already runs this validator after the allowlist verifier, so
+the command is useful for inspecting an existing full-run artifact pair. A
+parity parser error produces no parity summary; a validation error produces
+only a FAIL verdict. Neither is successful update evidence. A partial or
+failed run is not ledger-update evidence. Keep the paired artifacts, correct
+the cause, and rerun the full command.
+
+When qtest or flpdf changes, run the full corpus, classify every changed row,
+and keep the JSONL sorted by category and numeric ordinal. If a `blocked` or
+`failing` row becomes an ordinary PASS, promote it to `passing` in the same
+update. The validator rejects stale `passing`, `blocked`, and `failing`
+classifications. A `blocked` or `failing` row that becomes an ordinary PASS
+requires promotion to `passing`. For any state change, update the required
+`owner` and `bead` for `applicable`, `blocked`, or `failing`, or the
+`replacement_ref` for `excluded` or `represented`. `excluded` and
+`represented` are scope classifications, so an outcome change alone does not
+promote them.
+
+Pass counts and state counts are measured survey output, not implementation
+priorities. Use root-cause evidence and the referenced Bead or Rust test to
+choose work; record the resulting full-run measurements with the update.
 
 ## Re-vendoring
 

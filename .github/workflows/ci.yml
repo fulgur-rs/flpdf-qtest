@@ -78,15 +78,17 @@ jobs:
 
       # Select by binary name, not package name: the binary names are what the
       # harness consumes, while flpdf's crate layout is free to change.
-      - name: Build flpdf and flpdf-test-compare
+      - name: Build flpdf, flpdf-test-compare and flpdf-test-driver
         working-directory: flpdf
-        run: cargo build --release --bin flpdf --bin flpdf-test-compare
+        run: cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver
 
       - name: Run qtest acceptance suite
         env:
           FLPDF_CLI_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf
           FLPDF_TEST_COMPARE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-compare
+          FLPDF_TEST_DRIVER_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-driver
           FLPDF_COMMIT: ${{ steps.flpdf_sha.outputs.sha }}
+          QTEST_FULL: "1"
         run: ./scripts/run.sh
 
       - name: Upload qtest artifacts
@@ -97,8 +99,11 @@ jobs:
           path: |
             harness.log
             qtest.log
+            qtest-results.xml
+            TEST-qtest.xml
             qtest-summary.md
             qtest-metrics.jsonl
+            qtest-parity-summary.md
           if-no-files-found: ignore
 
   # Nightly only: append the run's metrics to the metrics-data history branch
@@ -106,7 +111,7 @@ jobs:
   # contents:read; this one needs contents:write to push. Best-effort.
   publish-metrics:
     needs: qtest
-    if: github.event_name == 'schedule'
+    if: ${{ always() && github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

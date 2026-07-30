@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""verify-allowlist.py — judge a qtest-driver log against allowlist.txt.
+"""verify-allowlist.py — judge authoritative qtest results against allowlist.txt.
 
 Usage:
-    scripts/verify-allowlist.py <qtest.log> <allowlist.txt> [--summary <path>]
+    scripts/verify-allowlist.py <qtest.log> <qtest.xml> <allowlist.txt> [--summary <path>]
 
 Exit codes:
     0  Run completed. Policy failures (allowlisted entries that regressed
@@ -11,99 +11,25 @@ Exit codes:
        code — they are surfaced instead as a data point on the nightly
        trend chart. This keeps flpdf-side regressions from blocking the
        chart's update loop.
-    1  Real error: log could not be parsed, or parse drift (the count of
-       result lines we extracted disagrees with the qtest-driver "Total
-       tests: N" summary — usually a log-write or regex breakage).
+    1  Real error: qtest result artifacts could not be parsed or reconciled.
     2  Argument / IO error.
 
-The companion summary file (Markdown) is always written when --summary is
-given, regardless of exit code, so CI can upload it as an artifact.
+The companion summary and metrics outputs are written only after the paired
+artifacts have been reconciled to a non-empty authoritative result set.
+Operational errors are diagnosed on stderr and leave those outputs unwritten;
+the runner clears stale generated artifacts before invoking this command.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-# qtest-driver emits two distinct subtest-result line shapes:
-#
-#   PASS (columnar, padded with dots):
-#     "arg-parsing  1 (required argument)                             ... PASSED"
-#
-#   FAIL (testlog dump header, no dots, literal " test " infix):
-#     "deterministic-id test 1 (deterministic ID: ...) FAILED"
-#
-# Both are captured here. The subtest description uses a greedy capture
-# constrained by requiring the trailing PASSED/FAILED suffix.
-_RESULT_RE_PASS = re.compile(
-    r"^(?P<test>[A-Za-z0-9][A-Za-z0-9_+.-]*)\s+"
-    r"(?P<num>\d+)\s+"
-    r"\((?P<name>.+)\)\s+"
-    r"\.\.\.\s+"
-    r"(?P<result>PASSED|FAILED)(?:\s+\(exp\))?\s*$"
-)
-_RESULT_RE_FAIL = re.compile(
-    r"^(?P<test>[A-Za-z0-9][A-Za-z0-9_+.-]*)\s+test\s+"
-    r"(?P<num>\d+)\s+"
-    r"\((?P<name>.+)\)\s+"
-    r"(?P<result>FAILED)\s*$"
-)
-
-# qtest-driver appends a "Total tests: N" summary line. We cross-check it
-# against the count of subtest result lines we parsed, so a regression that
-# silently drops result lines (e.g. log fd getting stolen by qtest-driver's
-# own testlog write) surfaces as an explicit error rather than as an empty
-# allowlist-candidates section.
-_SUMMARY_TOTAL_RE = re.compile(r"^Total tests:\s*(?P<n>\d+)\s*$")
-
-
-@dataclass(frozen=True)
-class Result:
-    test: str
-    subtest: str
-    passed: bool
-
-
-def parse_log(path: Path) -> tuple[list[Result], int | None]:
-    """Parse a qtest-driver log.
-
-    Returns:
-        (results, total_tests_summary). `total_tests_summary` is the
-        qtest-driver "Total tests: N" line if present, else None. Callers
-        should compare it against `len(results)` to detect parsing drift.
-    """
-    out: list[Result] = []
-    seen: set[tuple[str, str, str]] = set()
-    total_from_summary: int | None = None
-    with path.open("r", encoding="utf-8", errors="replace") as fh:
-        for line in fh:
-            stripped = line.rstrip("\n")
-            m_total = _SUMMARY_TOTAL_RE.match(stripped)
-            if m_total:
-                total_from_summary = int(m_total["n"])
-                continue
-            m = _RESULT_RE_PASS.match(stripped) or _RESULT_RE_FAIL.match(stripped)
-            if not m:
-                continue
-            key = (m["test"], m["num"], m["name"].strip())
-            # qtest-driver emits per-subtest details to both a testlog dump
-            # and a columnar status line; dedupe on (test, num, name).
-            if key in seen:
-                continue
-            seen.add(key)
-            out.append(
-                Result(
-                    test=m["test"],
-                    subtest=m["name"].strip(),
-                    passed=(m["result"] == "PASSED"),
-                )
-            )
-    return out, total_from_summary
+from qtest_results import Outcome, Result, ResultError, parse_run
 
 
 @dataclass(frozen=True)
@@ -112,11 +38,11 @@ class AllowlistEntry:
     subtest: str | None  # None = whole-file entry
 
     def matches(self, r: Result) -> bool:
-        if self.test != r.test:
+        if self.test != r.category:
             return False
         if self.subtest is None:
             return True
-        return self.subtest == r.subtest
+        return self.subtest == r.description
 
 
 def parse_allowlist(path: Path) -> list[AllowlistEntry]:
@@ -140,7 +66,7 @@ def _fmt(entries: Iterable[AllowlistEntry | Result]) -> list[str]:
         if isinstance(e, AllowlistEntry):
             out.append(e.test if e.subtest is None else f"{e.test}:{e.subtest}")
         else:
-            out.append(f"{e.test}:{e.subtest}")
+            out.append(f"{e.category}:{e.description}")
     return sorted(out)
 
 
@@ -170,7 +96,7 @@ def _bucket(results: list[Result], allowlist: list[AllowlistEntry]) -> Buckets:
             missing.append(entry)
             continue
         for r in matched:
-            if r.passed:
+            if r.outcome in (Outcome.PASS, Outcome.UNEXPECTED_PASS):
                 expected_pass.append(r)
             else:
                 regressions.append(r)
@@ -179,7 +105,7 @@ def _bucket(results: list[Result], allowlist: list[AllowlistEntry]) -> Buckets:
         on_allowlist = any(e.matches(r) for e in allowlist)
         if on_allowlist:
             continue
-        if r.passed:
+        if r.outcome in (Outcome.PASS, Outcome.UNEXPECTED_PASS):
             unexpected_pass.append(r)
         else:
             informational.append(r)
@@ -199,13 +125,10 @@ def build_metrics(
     *,
     commit: str,
     timestamp: str,
-    drift: bool = False,
 ) -> dict:
     """Build one time-series record for a run. Counts mirror the summary;
     ``commit`` (the flpdf SHA under test) and ``timestamp`` are supplied by
-    the caller so this stays deterministic and testable. ``drift`` records a
-    parse-drift night and forces the verdict to FAIL, matching the summary
-    (which is also bumped to FAIL on drift)."""
+    the caller so this stays deterministic and testable."""
     b = _bucket(results, allowlist)
     regressions = len(b.regressions)
     missing = len(b.missing)
@@ -219,8 +142,8 @@ def build_metrics(
         "missing": missing,
         "candidates": len(b.unexpected_pass),
         "informational": len(b.informational),
-        "drift": drift,
-        "verdict": "OK" if not regressions and not missing and not drift else "FAIL",
+        "drift": False,
+        "verdict": "OK" if not regressions and not missing else "FAIL",
     }
 
 
@@ -229,7 +152,6 @@ def judge(
     allowlist: list[AllowlistEntry],
     *,
     include_candidates: bool = True,
-    drift: bool = False,
 ) -> tuple[int, str]:
     """Judge results against the allowlist and render a Markdown summary.
 
@@ -239,11 +161,6 @@ def judge(
     and verdict but drops the (potentially thousands-long) candidate list.
     The candidate *count* line is unaffected.
 
-    ``drift`` signals that ``parse_log`` detected a mismatch between the
-    number of result lines it extracted and the qtest-driver
-    ``Total tests: N`` summary. It participates in the verdict so the
-    Markdown summary and ``build_metrics``'s record agree — both flip to
-    FAIL on drift even when no regression or missing entry is present.
     """
     b = _bucket(results, allowlist)
     expected_pass = b.expected_pass
@@ -253,11 +170,10 @@ def judge(
     informational = b.informational
 
     # Verdict is data, not a CI gate: regressions, missing allowlisted
-    # entries, and parse drift flip verdict to FAIL in the summary and the
-    # --metrics record, but the exit code stays 0 so the nightly still
-    # uploads its trend record. Real errors (log parse failure, drift as an
-    # operational signal) are handled in main() and produce exit != 0.
-    verdict = "OK" if not regressions and not missing and not drift else "FAIL"
+    # entries flip verdict to FAIL in the summary and the --metrics record,
+    # but the exit code stays 0 so the nightly still uploads its trend record.
+    # Result-artifact parse errors are handled in main() and produce exit != 0.
+    verdict = "OK" if not regressions and not missing else "FAIL"
     exit_code = 0
 
     lines: list[str] = []
@@ -296,22 +212,20 @@ def judge(
     return exit_code, "\n".join(lines)
 
 
-def _with_drift(summary: str, drift_msg: str | None) -> str:
-    """Prepend the parse-drift warning banner to a summary, if present."""
-    if not drift_msg:
-        return summary
-    return f"> ⚠️ {drift_msg}\n\n{summary}"
-
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("log", type=Path, help="qtest-driver output log")
+    ap.add_argument("xml", type=Path, help="qtest-driver XML result file")
     ap.add_argument("allowlist", type=Path, help="allowlist.txt")
     ap.add_argument(
         "--summary",
         type=Path,
         default=None,
-        help="write the full Markdown summary to this path (always written)",
+        help=(
+            "write the full Markdown summary after successful result "
+            "reconciliation, including soft policy FAIL verdicts; not "
+            "written on operational parser errors"
+        ),
     )
     ap.add_argument(
         "--step-summary",
@@ -349,44 +263,31 @@ def main(argv: list[str] | None = None) -> int:
     if not args.log.is_file():
         print(f"verify-allowlist: log not found: {args.log}", file=sys.stderr)
         return 2
+    if not args.xml.is_file():
+        print(f"verify-allowlist: XML not found: {args.xml}", file=sys.stderr)
+        return 2
     if not args.allowlist.is_file():
         print(f"verify-allowlist: allowlist not found: {args.allowlist}", file=sys.stderr)
         return 2
 
-    results, total_from_summary = parse_log(args.log)
-    allowlist = parse_allowlist(args.allowlist)
-    if not results:
-        print("verify-allowlist: no subtest results parsed from log", file=sys.stderr)
+    try:
+        run = parse_run(args.log, args.xml)
+        if not run.results:
+            raise ResultError("no authoritative subtest results")
+    except ResultError as exc:
+        print(f"verify-allowlist: {exc}", file=sys.stderr)
         return 1
-
-    drift_msg = None
-    if total_from_summary is not None and total_from_summary != len(results):
-        # Parser missed lines OR captured extras. This guards against the
-        # "tee writes to an orphaned inode" class of bug — see harness.log
-        # rationale in scripts/run.sh — and any future regex regression.
-        drift_msg = (
-            f"verify-allowlist: parsed {len(results)} subtest results "
-            f"but qtest summary reported {total_from_summary}"
-        )
-        print(drift_msg, file=sys.stderr)
-
-    drift = drift_msg is not None
-    exit_code, summary = judge(results, allowlist, drift=drift)
-    if drift_msg:
-        # Make the drift visible in the summary artifact too.
-        summary = _with_drift(summary, drift_msg)
-        exit_code = max(exit_code, 1)
+    results = list(run.results)
+    allowlist = parse_allowlist(args.allowlist)
+    exit_code, summary = judge(results, allowlist)
     sys.stdout.write(summary)
     if args.summary:
         args.summary.write_text(summary, encoding="utf-8")
     if args.step_summary:
-        # Headline only: same counts/regressions/missing/verdict and the same
-        # drift banner, but without the long candidate enumeration. Appended
-        # (GitHub convention) so other steps' summaries are preserved.
-        _, headline = judge(results, allowlist, include_candidates=False, drift=drift)
-        headline = _with_drift(headline, drift_msg)
-        if not headline.endswith("\n"):
-            headline += "\n"
+        # Headline only: same counts/regressions/missing/verdict but without
+        # the long candidate enumeration. Appended (GitHub convention) so
+        # other steps' summaries are preserved.
+        _, headline = judge(results, allowlist, include_candidates=False)
         # If a prior step left content without a trailing newline, separate it
         # so our `# qtest-summary` header starts on its own line.
         if args.step_summary.exists() and args.step_summary.stat().st_size > 0:
@@ -400,7 +301,6 @@ def main(argv: list[str] | None = None) -> int:
             allowlist,
             commit=args.commit,
             timestamp=args.timestamp,
-            drift=drift_msg is not None,
         )
         with args.metrics.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, sort_keys=True) + "\n")

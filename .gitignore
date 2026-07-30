@@ -4,6 +4,7 @@ qtest.log
 qtest-summary.md
 qtest-results.xml
 qtest-metrics.jsonl
+qtest-parity-summary.md
 TEST-*.xml
 
 # OS / editor scratch
