@@ -23,13 +23,23 @@
 #                           binary (the Rust port of qpdf's test_driver.cc,
 #                           used by shim/test_driver). Same resolution
 #                           order as FLPDF_CLI_BIN.
+#   FLPDF_TEST_PDF_DOC_ENCODING_BIN
+#                           Absolute path to flpdf-test-pdf-doc-encoding,
+#                           used by shim/test_pdf_doc_encoding. Same
+#                           resolution order as FLPDF_CLI_BIN.
+#   FLPDF_TEST_PDF_UNICODE_BIN
+#                           Absolute path to flpdf-test-pdf-unicode, used by
+#                           shim/test_pdf_unicode. Same resolution order as
+#                           FLPDF_CLI_BIN.
 #
 # Optional env:
 #   FLPDF_DIR      Absolute path to a flpdf checkout. If set and any of
 #                  FLPDF_CLI_BIN / FLPDF_TEST_COMPARE_BIN /
-#                  FLPDF_TEST_DRIVER_BIN is not, the script runs
-#                  `cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver`
-#                  there and always uses those freshly-built binaries.
+#                  FLPDF_TEST_DRIVER_BIN /
+#                  FLPDF_TEST_PDF_DOC_ENCODING_BIN /
+#                  FLPDF_TEST_PDF_UNICODE_BIN is not, the script runs one
+#                  release build selecting all five binaries there and always
+#                  uses those freshly-built binaries.
 #   QTEST_FULL     When "1", run every *.test in vendor/qpdf-qtest/.
 #
 # Outputs:
@@ -124,16 +134,47 @@ if [[ -z "${FLPDF_TEST_DRIVER_BIN:-}" ]]; then
     fi
 fi
 
+if [[ -z "${FLPDF_TEST_PDF_DOC_ENCODING_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_PDF_DOC_ENCODING_BIN="${FLPDF_DIR}/target/release/flpdf-test-pdf-doc-encoding"
+    elif [[ -x "${repo_root}/flpdf/target/release/flpdf-test-pdf-doc-encoding" ]]; then
+        FLPDF_TEST_PDF_DOC_ENCODING_BIN="${repo_root}/flpdf/target/release/flpdf-test-pdf-doc-encoding"
+    else
+        echo "run.sh: cannot locate flpdf-test-pdf-doc-encoding (set FLPDF_TEST_PDF_DOC_ENCODING_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
+fi
+
+if [[ -z "${FLPDF_TEST_PDF_UNICODE_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_PDF_UNICODE_BIN="${FLPDF_DIR}/target/release/flpdf-test-pdf-unicode"
+    elif [[ -x "${repo_root}/flpdf/target/release/flpdf-test-pdf-unicode" ]]; then
+        FLPDF_TEST_PDF_UNICODE_BIN="${repo_root}/flpdf/target/release/flpdf-test-pdf-unicode"
+    else
+        echo "run.sh: cannot locate flpdf-test-pdf-unicode (set FLPDF_TEST_PDF_UNICODE_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
+fi
+
 if [[ ${need_build} -eq 1 ]]; then
-    echo "==> Building flpdf, flpdf-test-compare and flpdf-test-driver in ${FLPDF_DIR}"
-    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver )
+    echo "==> Building flpdf and four qtest helper binaries in ${FLPDF_DIR}"
+    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode )
 fi
 
 export FLPDF_CLI_BIN
 export FLPDF_TEST_COMPARE_BIN
 export FLPDF_TEST_DRIVER_BIN
+export FLPDF_TEST_PDF_DOC_ENCODING_BIN
+export FLPDF_TEST_PDF_UNICODE_BIN
 
-for bin in "${FLPDF_CLI_BIN}" "${FLPDF_TEST_COMPARE_BIN}" "${FLPDF_TEST_DRIVER_BIN}"; do
+for bin in \
+    "${FLPDF_CLI_BIN}" \
+    "${FLPDF_TEST_COMPARE_BIN}" \
+    "${FLPDF_TEST_DRIVER_BIN}" \
+    "${FLPDF_TEST_PDF_DOC_ENCODING_BIN}" \
+    "${FLPDF_TEST_PDF_UNICODE_BIN}"; do
     if [[ ! -x "${bin}" ]]; then
         echo "run.sh: ${bin} is not executable" >&2
         exit 2

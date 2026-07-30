@@ -50,6 +50,38 @@ class RunContractTest(unittest.TestCase):
     def test_runner_exposes_no_subset_selection_interface(self) -> None:
         self.assertNotIn("QTEST_TESTS", self.script)
 
+    def test_runner_resolves_exports_and_preflights_character_helpers(
+        self,
+    ) -> None:
+        for variable, binary in (
+            (
+                "FLPDF_TEST_PDF_DOC_ENCODING_BIN",
+                "flpdf-test-pdf-doc-encoding",
+            ),
+            ("FLPDF_TEST_PDF_UNICODE_BIN", "flpdf-test-pdf-unicode"),
+        ):
+            self.assertIn(f'if [[ -z "${{{variable}:-}}" ]]', self.script)
+            self.assertIn(
+                f'{variable}="${{FLPDF_DIR}}/target/release/{binary}"',
+                self.script,
+            )
+            self.assertIn(
+                f'{variable}="${{repo_root}}/flpdf/target/release/{binary}"',
+                self.script,
+            )
+            self.assertIn(f"export {variable}", self.script)
+            self.assertIn(f'"${{{variable}}}"', self.script)
+            self.assertRegex(
+                self.script,
+                rf"cargo build .*--bin {re.escape(binary)}",
+            )
+            self.assertIn(f"--bin {binary}", self.workflow)
+            self.assertRegex(
+                self.workflow,
+                rf"{variable}:\s+\$\{{\{{ github\.workspace \}}\}}"
+                rf"/flpdf/target/release/{re.escape(binary)}",
+            )
+
     def _parity_ledger_section(self) -> str:
         readme = (_ROOT / "README.md").read_text(encoding="utf-8")
         match = re.search(
