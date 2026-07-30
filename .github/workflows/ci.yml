@@ -111,7 +111,7 @@ jobs:
   # contents:read; this one needs contents:write to push. Best-effort.
   publish-metrics:
     needs: qtest
-    if: github.event_name == 'schedule'
+    if: ${{ always() && github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

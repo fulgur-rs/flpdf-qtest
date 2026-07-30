@@ -16,6 +16,7 @@ class RunContractTest(unittest.TestCase):
         self.workflow = (_ROOT / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
+        self.gitignore = (_ROOT / ".gitignore").read_text(encoding="utf-8")
 
     def test_allowlist_verifier_receives_paired_log_and_xml(self) -> None:
         self.assertRegex(
@@ -423,6 +424,22 @@ class RunContractTest(unittest.TestCase):
             r'harness\.log\s+qtest\.log\s+qtest-results\.xml\s+'
             r'TEST-qtest\.xml\s+qtest-summary\.md\s+qtest-metrics\.jsonl\s+'
             r'qtest-parity-summary\.md',
+        )
+
+    def test_gitignore_lists_parity_summary_artifact(self) -> None:
+        ignored = {
+            line.strip()
+            for line in self.gitignore.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+        self.assertIn("qtest-parity-summary.md", ignored)
+
+    def test_ci_publishes_scheduled_metrics_after_qtest_failure(self) -> None:
+        publish_metrics = self.workflow.split("  publish-metrics:", maxsplit=1)[1]
+        self.assertRegex(
+            publish_metrics,
+            r"(?m)^    if: \$\{\{ always\(\) && "
+            r"github\.event_name == 'schedule' \}\}$",
         )
 
     def test_ci_full_survey_uploads_parity_summary(self) -> None:
