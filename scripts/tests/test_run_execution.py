@@ -212,6 +212,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_DRIVER_BIN": str(self.fake_binary),
                 "FLPDF_TEST_PDF_DOC_ENCODING_BIN": str(self.fake_binary),
                 "FLPDF_TEST_PDF_UNICODE_BIN": str(self.fake_binary),
+                "FLPDF_TEST_UNICODE_FILENAMES_BIN": str(self.fake_binary),
                 "FAKE_QTEST_MODE": mode,
             }
         )
@@ -308,7 +309,8 @@ class RunExecutionTest(unittest.TestCase):
             "set -eu\n"
             "printf '%s\\n' \"$@\" > \"$FLPDF_DIR/cargo-args.txt\"\n"
             "for name in flpdf flpdf-test-compare flpdf-test-driver "
-            "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode; do\n"
+            "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode "
+            "flpdf-test-unicode-filenames; do\n"
             "  printf '#!/usr/bin/env sh\\nexit 0\\n' "
             "> \"$FLPDF_DIR/target/release/$name\"\n"
             "  chmod +x \"$FLPDF_DIR/target/release/$name\"\n"
@@ -326,6 +328,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_DRIVER_BIN": None,
                 "FLPDF_TEST_PDF_DOC_ENCODING_BIN": None,
                 "FLPDF_TEST_PDF_UNICODE_BIN": None,
+                "FLPDF_TEST_UNICODE_FILENAMES_BIN": None,
                 "FLPDF_DIR": str(flpdf_dir),
                 "PATH": f"{fake_tools}:{os.environ['PATH']}",
             },
@@ -350,6 +353,8 @@ class RunExecutionTest(unittest.TestCase):
                 "flpdf-test-pdf-doc-encoding",
                 "--bin",
                 "flpdf-test-pdf-unicode",
+                "--bin",
+                "flpdf-test-unicode-filenames",
             ],
         )
         self.assertEqual(
