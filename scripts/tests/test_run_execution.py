@@ -83,6 +83,8 @@ class RunExecutionTest(unittest.TestCase):
                     ($ENV{"FLPDF_TEST_PDF_DOC_ENCODING_BIN"} // ""),
                     "\n",
                     ($ENV{"FLPDF_TEST_PDF_UNICODE_BIN"} // ""),
+                    "\n",
+                    ($ENV{"FLPDF_TEST_UNICODE_FILENAMES_BIN"} // ""),
                     "\n";
                 close $helper_env;
                 my $datadir = "";
@@ -364,6 +366,7 @@ class RunExecutionTest(unittest.TestCase):
             [
                 str(release_dir / "flpdf-test-pdf-doc-encoding"),
                 str(release_dir / "flpdf-test-pdf-unicode"),
+                str(release_dir / "flpdf-test-unicode-filenames"),
             ],
         )
 
