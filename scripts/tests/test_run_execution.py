@@ -85,6 +85,10 @@ class RunExecutionTest(unittest.TestCase):
                     ($ENV{"FLPDF_TEST_PDF_UNICODE_BIN"} // ""),
                     "\n",
                     ($ENV{"FLPDF_TEST_UNICODE_FILENAMES_BIN"} // ""),
+                    "\n",
+                    ($ENV{"FLPDF_TEST_XREF_BIN"} // ""),
+                    "\n",
+                    ($ENV{"FLPDF_TEST_PARSED_OFFSET_BIN"} // ""),
                     "\n";
                 close $helper_env;
                 my $datadir = "";
@@ -215,6 +219,8 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_PDF_DOC_ENCODING_BIN": str(self.fake_binary),
                 "FLPDF_TEST_PDF_UNICODE_BIN": str(self.fake_binary),
                 "FLPDF_TEST_UNICODE_FILENAMES_BIN": str(self.fake_binary),
+                "FLPDF_TEST_XREF_BIN": str(self.fake_binary),
+                "FLPDF_TEST_PARSED_OFFSET_BIN": str(self.fake_binary),
                 "FAKE_QTEST_MODE": mode,
             }
         )
@@ -311,8 +317,8 @@ class RunExecutionTest(unittest.TestCase):
             "set -eu\n"
             "printf '%s\\n' \"$@\" > \"$FLPDF_DIR/cargo-args.txt\"\n"
             "for name in flpdf flpdf-test-compare flpdf-test-driver "
-            "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode "
-            "flpdf-test-unicode-filenames; do\n"
+                "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode "
+                "flpdf-test-unicode-filenames test_xref test_parsedoffset; do\n"
             "  printf '#!/usr/bin/env sh\\nexit 0\\n' "
             "> \"$FLPDF_DIR/target/release/$name\"\n"
             "  chmod +x \"$FLPDF_DIR/target/release/$name\"\n"
@@ -331,6 +337,8 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_PDF_DOC_ENCODING_BIN": None,
                 "FLPDF_TEST_PDF_UNICODE_BIN": None,
                 "FLPDF_TEST_UNICODE_FILENAMES_BIN": None,
+                "FLPDF_TEST_XREF_BIN": None,
+                "FLPDF_TEST_PARSED_OFFSET_BIN": None,
                 "FLPDF_DIR": str(flpdf_dir),
                 "PATH": f"{fake_tools}:{os.environ['PATH']}",
             },
@@ -357,6 +365,10 @@ class RunExecutionTest(unittest.TestCase):
                 "flpdf-test-pdf-unicode",
                 "--bin",
                 "flpdf-test-unicode-filenames",
+                "--bin",
+                "test_xref",
+                "--bin",
+                "test_parsedoffset",
             ],
         )
         self.assertEqual(
@@ -367,6 +379,8 @@ class RunExecutionTest(unittest.TestCase):
                 str(release_dir / "flpdf-test-pdf-doc-encoding"),
                 str(release_dir / "flpdf-test-pdf-unicode"),
                 str(release_dir / "flpdf-test-unicode-filenames"),
+                str(release_dir / "test_xref"),
+                str(release_dir / "test_parsedoffset"),
             ],
         )
 

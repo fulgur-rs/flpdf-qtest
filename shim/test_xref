@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# shim/test_xref — route qpdf's metadata helper name to the flpdf
+# test_xref binary, which consumes the public source-xref API.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_XREF_BIN:-}" ]]; then
+    echo "shim/test_xref: FLPDF_TEST_XREF_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_XREF_BIN}" ]]; then
+    echo "shim/test_xref: FLPDF_TEST_XREF_BIN=${FLPDF_TEST_XREF_BIN} is not executable" >&2
+    exit 127
+fi
+
+exec -a test_xref "${FLPDF_TEST_XREF_BIN}" "$@"
