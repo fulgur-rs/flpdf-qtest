@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# shim/test_parsedoffset — route qpdf's metadata helper name to the flpdf
+# test_parsedoffset binary, which consumes the public parsed-offset API.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_PARSED_OFFSET_BIN:-}" ]]; then
+    echo "shim/test_parsedoffset: FLPDF_TEST_PARSED_OFFSET_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_PARSED_OFFSET_BIN}" ]]; then
+    echo "shim/test_parsedoffset: FLPDF_TEST_PARSED_OFFSET_BIN=${FLPDF_TEST_PARSED_OFFSET_BIN} is not executable" >&2
+    exit 127
+fi
+
+exec -a test_parsedoffset "${FLPDF_TEST_PARSED_OFFSET_BIN}" "$@"

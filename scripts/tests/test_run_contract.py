@@ -59,6 +59,8 @@ class RunContractTest(unittest.TestCase):
                 "flpdf-test-pdf-doc-encoding",
             ),
             ("FLPDF_TEST_PDF_UNICODE_BIN", "flpdf-test-pdf-unicode"),
+            ("FLPDF_TEST_XREF_BIN", "test_xref"),
+            ("FLPDF_TEST_PARSED_OFFSET_BIN", "test_parsedoffset"),
         ):
             self.assertIn(f'if [[ -z "${{{variable}:-}}" ]]', self.script)
             self.assertIn(

@@ -68,11 +68,12 @@ XML from different runs: doing so is rejected as an inconsistent result set.
 ## Running locally
 
 ```bash
-# Build all five binaries the harness needs. Select them by binary name so an
+# Build all eight binaries the harness needs. Select them by binary name so an
 # flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
 cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver \
-  --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode
+  --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode \
+  --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset
 
 # Then drive qtest.
 cd /path/to/flpdf-qtest
@@ -81,6 +82,9 @@ FLPDF_TEST_COMPARE_BIN=/path/to/flpdf/target/release/flpdf-test-compare \
 FLPDF_TEST_DRIVER_BIN=/path/to/flpdf/target/release/flpdf-test-driver \
 FLPDF_TEST_PDF_DOC_ENCODING_BIN=/path/to/flpdf/target/release/flpdf-test-pdf-doc-encoding \
 FLPDF_TEST_PDF_UNICODE_BIN=/path/to/flpdf/target/release/flpdf-test-pdf-unicode \
+FLPDF_TEST_UNICODE_FILENAMES_BIN=/path/to/flpdf/target/release/flpdf-test-unicode-filenames \
+FLPDF_TEST_XREF_BIN=/path/to/flpdf/target/release/test_xref \
+FLPDF_TEST_PARSED_OFFSET_BIN=/path/to/flpdf/target/release/test_parsedoffset \
 QTEST_FULL=1 \
   ./scripts/run.sh
 ```
@@ -97,8 +101,10 @@ Useful env knobs:
 - `FLPDF_DIR=/path/to/flpdf` — if any of `FLPDF_CLI_BIN`,
   `FLPDF_TEST_COMPARE_BIN`, `FLPDF_TEST_DRIVER_BIN`,
   `FLPDF_TEST_PDF_DOC_ENCODING_BIN`, or `FLPDF_TEST_PDF_UNICODE_BIN` is
-  unset, build all five binaries in that checkout, using the built path for
-  each binary whose environment variable is unset.
+  `FLPDF_TEST_UNICODE_FILENAMES_BIN`, `FLPDF_TEST_XREF_BIN`, or
+  `FLPDF_TEST_PARSED_OFFSET_BIN` is unset, build all eight binaries in that
+  checkout, using the built path for each binary whose environment variable is
+  unset.
 
 ## Parity ledger maintenance
 
@@ -208,8 +214,9 @@ local survey numbers.
 Unsupported helpers in `shim/` fail loudly (`exit 127` with a descriptive
 stderr message), so dependent subtests are recorded as real failures.
 Supported helpers delegate to Rust binaries: `test_driver`,
-`test_pdf_doc_encoding`, and `test_pdf_unicode` route to
-`flpdf-qtest-tools`, while `fix-qdf` routes to `flpdf`.
+`test_pdf_doc_encoding`, `test_pdf_unicode`, `test_unicode_filenames`,
+`test_xref`, and `test_parsedoffset` route to `flpdf-qtest-tools`, while
+`fix-qdf` routes to `flpdf`.
 
 ## License
 
