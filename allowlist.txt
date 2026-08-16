@@ -213,6 +213,109 @@ get-xref:with object streams
 parsed-offset:parsed offset without object streams
 parsed-offset:parsed offset with object streams
 
+# Promote batch 2026-08-16 (part 2), from the same full survey at flpdf
+# 10a058f3 that produced the 13-entry batch above. Source: the 106
+# candidates that went NEW in the 2026-08-15 survey (flpdf 88ef9efe,
+# "scaffold test_driver test_2..test_98 (#839)"; see FINDINGS-coverage-
+# check-20260815-e2937212.md), now at their 3rd clean build (criterion 2
+# clear). Fifty-nine subtests promoted here, verified against ALL THREE
+# criteria:
+#   1. name uniqueness — (category, description) match count == 1 against
+#      harness.log.fullsurvey-10a058f3 (computed programmatically, not by
+#      .test grep alone). This excludes ~29 duplicate-named entries from
+#      the 106 (e.g. attachments:check output ×2 with FAILing siblings,
+#      basic-parsing:check output, encryption:extract attachments ×6,
+#      form-xobject:overlay shrink/expand ×4 and overlay transformations
+#      ×4, stream-replacements:check output — see the "Still EXCLUDED"
+#      note below for the ones with a FAILing sibling specifically).
+#   2. multi-survey stability — all 106 held expected_pass with 0
+#      regressions across three consecutive clean surveys (e2937212
+#      2026-08-15, ae38f887 and 10a058f3 both 2026-08-16).
+#   3. qpdf-only / shim-routed — this batch is dominated by `test_driver N
+#      <file>` invocations (→ shim/test_driver → flpdf), confirmed
+#      individually against vendor/qpdf-qtest/*.test for every entry below;
+#      a handful use `qpdf ...` directly or compare a file produced by an
+#      immediately-preceding shim-routed subtest in the same .test (same
+#      pattern as the already-allowlisted precheck-streams:check output).
+# CRITICAL EXTRA FILTER applied on top of the three criteria: five of the
+# 64 name-unique candidates invoke `test_driver N -` (stdin `-`), which is
+# the exact CI-environment-dependent failure mode from PR #33 (non-
+# interactive shell can't open `-` as a file) — cross-referenced against
+# parity/qtest-11.9.0.jsonl by id "<suite> <ordinal>" and excluded because
+# their manifest state is "applicable", not "passing": exceptions 2,
+# object-handle-api 1, object-handle-api 4, tokenizer 5, type-checks 6.
+# Passing locally does NOT mean passing on CI for this specific batch, so
+# the manifest (CI-authoritative as of PR #33) is the source of truth here,
+# not the local harness.log alone.
+# fix-qdf:fix-qdf 2 / fix-qdf 2 from pipe / fix-qdf with big object stream
+# get special mention: they were EXCLUDED in the 2026-06-10 batch below for
+# a real flpdf gap (qdf-fix rejected xref-stream/object-stream QDF). They
+# started passing with e2937212 (2026-08-15) and have held stably since;
+# fixture inspection confirms fix2.qdf/big-ostream.pdf are genuine xref-
+# stream/object-stream content, not weakened comparisons, so this is a
+# real flpdf capability fix, not a shim artifact. fix-qdf:identity fix-qdf
+# 2 is NOT included — duplicate name (ordinals 4 and 8), deferred with the
+# other duplicate-name groups.
+attachments:attachments
+attachments:list attachments verbose
+attachments:remove attachment (test_driver)
+attachments:show attachment
+cleartext-metadata:check metadata: compressed-metadata.pdf
+cleartext-metadata:check metadata: enc-base.pdf
+copy-foreign-objects:copy objects error
+copy-foreign-objects:indirect filters
+custom-pipeline:check output
+custom-pipeline:output to custom pipeline
+disable-filter-on-write:no filter on write
+encryption:copy encryption parameters
+encryption:set encryption before set filename
+final-version:check final version
+fix-qdf:fix-qdf 2
+fix-qdf:fix-qdf 2 from pipe
+fix-qdf:fix-qdf with big object stream
+form-xobject:form xobject creation
+form-xobject:page operations on form xobject
+interactive-form:button fields
+interactive-form:form test: minimal
+many-nulls:copy sparse array
+name-number-trees:nntree erase
+name-number-trees:nntree split
+object-copying:copy a stream
+object-copying:shallow copy an array
+object-handle-api:equality
+object-stream:overridden compressed objects
+outlines:outlines: outlines-with-actions
+outlines:outlines: outlines-with-loop
+outlines:outlines: outlines-with-old-root-dests
+outlines:outlines: page-labels-and-outlines
+page-api:basic page API
+page-api:delete and re-add a page
+page-api:get box methods
+page-api:manual page manipulation
+page-labels:complex page labels
+page-labels:no page labels
+page-labels:no zero entry for page labels
+pages-tree:extract duplicated pages
+pages-tree:linearize duplicated pages
+parsing:extra header text
+parsing:terminate parsing
+parsing:tokenize content streams
+pclm:check output
+pclm:write as PCLm
+precheck-streams:bad stream
+qpdf-json:simple version of writeJSON
+qpdf-json:write JSON to pipeline
+signature-dictionary:checkout output (remove restrictions)
+specific-file:pages points to page
+stream-line-terminators:check output
+stream-replacements:add page contents
+stream-replacements:new streams
+stream-replacements:replace stream data
+stream-replacements:replace stream data compressed
+token-filters:check output
+token-filters:token filter
+type-checks:compound type checks
+
 # Still deliberately EXCLUDED (re-evaluate in a later survey):
 #   - decode-parameters:check file / preserve-unref:check output —
 #     duplicate subtest name across ordinals in the same .test, with at
@@ -225,13 +328,21 @@ parsed-offset:parsed offset with object streams
 #   - encryption:make sure there is no xref stream — its own COMMAND is
 #     `grep /ObjStm b.pdf | wc -l`, a host grep/wc assertion, NOT a qpdf call,
 #     so passing it is not an flpdf-CLI compatibility claim (criterion 3).
-#   - fix-qdf:fix-qdf 2 / 2 from pipe / identity fix-qdf 2 / with big object
-#     stream — flpdf `qdf-fix` rejects xref-stream/object-stream QDF
-#     (`no classic xref table found`); real flpdf gap, FAIL on the adapter
-#     shim. fix-qdf:identity fix-qdf 1 is a DUPLICATE name (appears in both
-#     the direct and pipe loops), so it stays excluded too.
+#   - fix-qdf:identity fix-qdf 2 — DUPLICATE name (ordinals 4 and 8, both
+#     currently PASS); fix-qdf:identity fix-qdf 1 is likewise a duplicate
+#     (appears in both the direct and pipe loops). Both stay excluded
+#     pending verifier subtest-identity support.
+#   - exceptions:check certain exception types / object-handle-api:
+#     dictionary keys / object-handle-api:isScalar checks / tokenizer:
+#     quoted char edge cases / type-checks:indirect objects belonging to
+#     destroyed QPDF — all invoke `test_driver N -` (stdin `-`); PASS
+#     locally but FAIL on CI's non-interactive shell (PR #33's known
+#     issue). parity manifest marks these `applicable`, not `passing`.
 #   - qpdf-json:good:* — loop-generated subtest names; match counts not yet
 #     re-confirmed stable, deferred pending a per-name count check.
-#   - encryption:check against base ×28, unicode-password:* repeats — duplicate
-#     names; a single allowlist line would match every instance and go red on
-#     any one FAIL. Needs verifier subtest-identity support (line/index).
+#   - encryption:check against base ×28, unicode-password:* repeats,
+#     attachments/basic-parsing/encryption:extract attachments/form-xobject
+#     duplicate "check output"-style names from the 0815 batch — a single
+#     allowlist line would match every instance and go red on any one FAIL
+#     (several of these already have a FAILing sibling ordinal). Needs
+#     verifier subtest-identity support (line/index).
