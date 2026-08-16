@@ -165,7 +165,63 @@ form-xobject:overlay on page with no resources
 incremental:handle delete and don't reuse
 linearization:dump linearization: lin0
 
+# Promote batch 2026-08-16, from full survey at flpdf 10a058f3 (FINDINGS-
+# coverage-check-20260816-10a058f3.md). Thirteen qpdf-CLI-compatibility
+# subtests, each re-verified against ALL THREE criteria directly against
+# harness.log.fullsurvey-10a058f3 (feedback_allowlist_promote_criteria):
+#   1. name uniqueness — (category, description) match count == 1 in the raw
+#      harness.log, EXCEPT get-xref/parsed-offset which are 1-per-.test by
+#      construction (two distinct descriptions, one ordinal each).
+#   2. multi-survey stability — these have held expected_pass +1 with 0 new
+#      regressions across many clean surveys since 2026-05-18/06-10/06-18
+#      (character-encoding, replace-input, unicode-filenames, encryption,
+#      filter-abbreviations, precheck-streams) and since 0812/0814
+#      (get-xref, parsed-offset); reconfirmed again on 10a058f3.
+#   3. qpdf-only / shim-routed — verified against vendor/qpdf-qtest/*.test:
+#      character-encoding's three helper-binary subtests route through
+#      shim/test_pdf_doc_encoding and shim/test_pdf_unicode (both hard-fail
+#      if FLPDF_TEST_PDF_*_BIN is unset, so no host bleed-through is
+#      possible); its fourth subtest and encryption:linearize-and-encrypt
+#      call `qpdf ...` directly (→ shim/qpdf → flpdf); replace-input and
+#      unicode-filenames route through shim/test_unicode_filenames;
+#      filter-abbreviations:check output calls `qpdf-test-compare`
+#      (→ shim/qpdf-test-compare → flpdf-test-compare); precheck-streams:
+#      check output is a pure file comparison against a.pdf, which the
+#      immediately preceding "bad stream" subtest in the same .test
+#      produces via `qpdf --static-id ...` (both subtests PASS); get-xref
+#      and parsed-offset route through shim/test_xref and
+#      shim/test_parsedoffset respectively.
+# Deliberately EXCLUDED from this batch (see below): decode-parameters:
+# check file and preserve-unref:check output — both are duplicate-named
+# across multiple ordinals in their .test, and at least one sibling ordinal
+# FAILs on 10a058f3, so a single allowlist line would immediately register
+# as a regression. page-without-contents:check output is also duplicate-
+# named (3 ordinals) but all three currently PASS; held back out of caution
+# pending verifier subtest-identity support, same as the loop-generated
+# names below.
+character-encoding:PDF doc encoding to Unicode
+character-encoding:UTF-16 encoding
+character-encoding:UTF-16 encoding errors
+character-encoding:UTF-16LE strings
+replace-input:create unicode filenames
+unicode-filenames:create unicode filenames
+encryption:linearize and encrypt file
+filter-abbreviations:check output
+precheck-streams:check output
+get-xref:without object streams
+get-xref:with object streams
+parsed-offset:parsed offset without object streams
+parsed-offset:parsed offset with object streams
+
 # Still deliberately EXCLUDED (re-evaluate in a later survey):
+#   - decode-parameters:check file / preserve-unref:check output —
+#     duplicate subtest name across ordinals in the same .test, with at
+#     least one sibling ordinal FAILing on 10a058f3 (decode-parameters
+#     ordinal 6, preserve-unref ordinals 4 and 6). A single allowlist line
+#     matches every same-named ordinal and would go red immediately.
+#   - page-without-contents:check output — duplicate name across 3
+#     ordinals, all currently PASS, but no per-ordinal identity in the
+#     verifier yet; deferred with the other duplicate-name groups below.
 #   - encryption:make sure there is no xref stream — its own COMMAND is
 #     `grep /ObjStm b.pdf | wc -l`, a host grep/wc assertion, NOT a qpdf call,
 #     so passing it is not an flpdf-CLI compatibility claim (criterion 3).
