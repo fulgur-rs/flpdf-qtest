@@ -80,14 +80,16 @@ cd "${repo_root}"
 # Clear every generated artifact before binary resolution or any other
 # preflight check. A failed invocation must never leave a previous success
 # looking current.
-log="${repo_root}/harness.log"
-qtest_log="${repo_root}/qtest.log"
-qtest_xml="${repo_root}/qtest-results.xml"
-qtest_junit="${repo_root}/TEST-qtest.xml"
-summary="${repo_root}/qtest-summary.md"
-metrics="${repo_root}/qtest-metrics.jsonl"
+live_dir="${repo_root}/survey/latest"
+mkdir -p "${live_dir}"
+log="${live_dir}/harness.log"
+qtest_log="${live_dir}/qtest.log"
+qtest_xml="${live_dir}/qtest-results.xml"
+qtest_junit="${live_dir}/TEST-qtest.xml"
+summary="${live_dir}/qtest-summary.md"
+metrics="${live_dir}/qtest-metrics.jsonl"
 manifest="${repo_root}/parity/qtest-11.9.0.jsonl"
-parity_summary="${repo_root}/qtest-parity-summary.md"
+parity_summary="${live_dir}/qtest-parity-summary.md"
 rm -f \
     "${log}" \
     "${qtest_log}" \
@@ -322,12 +324,19 @@ else
     fi
 
     echo "==> Running qtest-driver on: ${stems[*]}"
-    TESTS="${stems[*]}" \
-    perl "${repo_root}/vendor/qtest/bin/qtest-driver" \
-        -datadir "${qtest_datadir}" \
-        -bindirs "${shim_bin}" \
-        -stdout-tty=0 \
-        2>&1 | tee -a "${log}" || true
+    # qtest-driver hardcodes qtest.log / qtest-results.xml / TEST-qtest.xml
+    # relative to its cwd and vendor/ must not be patched, so run it from the
+    # live artifact directory instead of moving files afterwards. It captures
+    # cwd once at startup, and -datadir / -bindirs are absolute, so nothing
+    # else in the invocation is cwd-relative.
+    (
+        cd "${live_dir}" &&
+        TESTS="${stems[*]}" \
+        perl "${repo_root}/vendor/qtest/bin/qtest-driver" \
+            -datadir "${qtest_datadir}" \
+            -bindirs "${shim_bin}" \
+            -stdout-tty=0
+    ) 2>&1 | tee -a "${log}" || true
 
     if [[ ! -f "${qtest_xml}" ]]; then
         echo "run.sh: qtest results XML not found: ${qtest_xml}" >&2

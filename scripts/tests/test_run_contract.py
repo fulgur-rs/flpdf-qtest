@@ -378,7 +378,7 @@ class RunContractTest(unittest.TestCase):
                     check(mutant)
 
     def test_nonempty_run_requires_qtest_result_xml_before_verification(self) -> None:
-        self.assertIn('qtest_xml="${repo_root}/qtest-results.xml"', self.script)
+        self.assertIn('qtest_xml="${live_dir}/qtest-results.xml"', self.script)
         run_section = self.script.split(
             "# --- run qtest-driver", maxsplit=1
         )[1].split("# --- verify against allowlist", maxsplit=1)[0]
@@ -420,6 +420,15 @@ class RunContractTest(unittest.TestCase):
         for artifact in generated:
             self.assertIn(f'"{artifact}"', clear_block)
 
+    def test_driver_runs_from_the_live_artifact_directory(self) -> None:
+        """qtest-driver hardcodes qtest.log / qtest-results.xml / TEST-qtest.xml
+        relative to cwd, so the runner must invoke it from survey/latest."""
+        self.assertIn('live_dir="${repo_root}/survey/latest"', self.script)
+        self.assertRegex(
+            self.script,
+            r'\(\s*cd "\$\{live_dir\}" &&[^)]*qtest-driver',
+        )
+
     def test_driver_receives_only_the_isolated_qtest_datadir(self) -> None:
         self.assertIn(
             'qtest_source="${repo_root}/vendor/qpdf-qtest"',
@@ -455,9 +464,12 @@ class RunContractTest(unittest.TestCase):
         self.assertRegex(
             self.workflow,
             r'(?s)- name: Upload qtest artifacts.*?path: \|\s+'
-            r'harness\.log\s+qtest\.log\s+qtest-results\.xml\s+'
-            r'TEST-qtest\.xml\s+qtest-summary\.md\s+qtest-metrics\.jsonl\s+'
-            r'qtest-parity-summary\.md',
+            r'survey/latest/harness\.log\s+survey/latest/qtest\.log\s+'
+            r'survey/latest/qtest-results\.xml\s+'
+            r'survey/latest/TEST-qtest\.xml\s+'
+            r'survey/latest/qtest-summary\.md\s+'
+            r'survey/latest/qtest-metrics\.jsonl\s+'
+            r'survey/latest/qtest-parity-summary\.md',
         )
 
     def test_gitignore_lists_parity_summary_artifact(self) -> None:
@@ -466,7 +478,7 @@ class RunContractTest(unittest.TestCase):
             for line in self.gitignore.splitlines()
             if line.strip() and not line.lstrip().startswith("#")
         }
-        self.assertIn("qtest-parity-summary.md", ignored)
+        self.assertIn("survey/latest/", ignored)
 
     def test_ci_publishes_scheduled_metrics_after_qtest_failure(self) -> None:
         publish_metrics = self.workflow.split("  publish-metrics:", maxsplit=1)[1]

@@ -101,14 +101,17 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: qtest-results
+          # upload-artifact roots the artifact at the least common ancestor
+          # of these paths -- survey/latest -- so the artifact keeps the flat
+          # shape publish-metrics.sh expects at artifacts/qtest-metrics.jsonl.
           path: |
-            harness.log
-            qtest.log
-            qtest-results.xml
-            TEST-qtest.xml
-            qtest-summary.md
-            qtest-metrics.jsonl
-            qtest-parity-summary.md
+            survey/latest/harness.log
+            survey/latest/qtest.log
+            survey/latest/qtest-results.xml
+            survey/latest/TEST-qtest.xml
+            survey/latest/qtest-summary.md
+            survey/latest/qtest-metrics.jsonl
+            survey/latest/qtest-parity-summary.md
           if-no-files-found: ignore
 
   # Nightly only: append the run's metrics to the metrics-data history branch
