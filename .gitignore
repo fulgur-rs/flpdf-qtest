@@ -1,11 +1,8 @@
 # qtest run artifacts (uploaded as CI artifacts, not committed)
-harness.log
-qtest.log
-qtest-summary.md
-qtest-results.xml
-qtest-metrics.jsonl
-qtest-parity-summary.md
-TEST-*.xml
+survey/latest/
+
+# Per-generation survey snapshots kept locally for cross-run diffs
+survey/history/
 
 # OS / editor scratch
 .DS_Store

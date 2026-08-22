@@ -50,13 +50,18 @@ flpdf-qtest/
 ├── scripts/verify-allowlist.py
 ├── allowlist.txt              # tests required to pass (empty at Phase 1)
 ├── normalize/stderr-rules.sed # stderr prefix / wording normalization
+├── survey/
+│   ├── latest/                # artifacts from the most recent run
+│   ├── history/               # per-generation snapshots (local only)
+│   └── findings/              # FINDINGS-*.md survey write-ups
 └── .github/workflows/ci.yml   # push / PR / weekly / workflow_dispatch
 ```
 
 ## Outputs
 
-For every non-empty qtest run, `harness.log` and `qtest-results.xml` are a
-required pair from the same invocation. The log records qtest's human-readable
+Every survey artifact is written under `survey/latest/`. For every non-empty
+qtest run, `harness.log` and `qtest-results.xml` are a required pair from the
+same invocation. The log records qtest's human-readable
 outcomes while the XML provides its authoritative per-subtest result set;
 `verify-allowlist.py` reconciles both before it writes `qtest-summary.md` and
 `qtest-metrics.jsonl`. `TEST-qtest.xml` is qtest's accompanying JUnit artifact.
@@ -90,7 +95,7 @@ QTEST_FULL=1 \
 ```
 
 A full run leaves `harness.log`, `qtest-results.xml`, and `TEST-qtest.xml` in
-the repository root. Keep `harness.log` and `qtest-results.xml` together when
+`survey/latest/`. Keep `harness.log` and `qtest-results.xml` together when
 inspecting or sharing a result: both validators derive their verdicts from
 that paired artifact set.
 
@@ -163,7 +168,8 @@ After a full run, validate the paired artifacts and ledger explicitly:
 
 ```bash
 python3 scripts/verify-parity-manifest.py \
-  harness.log qtest-results.xml parity/qtest-11.9.0.jsonl
+  survey/latest/harness.log survey/latest/qtest-results.xml \
+  parity/qtest-11.9.0.jsonl
 ```
 
 `scripts/run.sh` already runs this validator after the allowlist verifier, so

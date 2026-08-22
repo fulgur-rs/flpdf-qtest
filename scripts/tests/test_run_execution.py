@@ -29,6 +29,7 @@ class RunExecutionTest(unittest.TestCase):
     def setUp(self) -> None:
         self._temporary = tempfile.TemporaryDirectory()
         self.repo = Path(self._temporary.name)
+        self.live = self.repo / "survey" / "latest"
         (self.repo / "scripts").mkdir()
         (self.repo / "shim").mkdir()
         (self.repo / "vendor" / "qtest" / "bin").mkdir(parents=True)
@@ -195,8 +196,9 @@ class RunExecutionTest(unittest.TestCase):
         self._temporary.cleanup()
 
     def _preseed(self) -> None:
+        self.live.mkdir(parents=True, exist_ok=True)
         for name in _GENERATED:
-            (self.repo / name).write_text(_SENTINEL, encoding="utf-8")
+            (self.live / name).write_text(_SENTINEL, encoding="utf-8")
 
     def _run(
         self,
@@ -244,12 +246,16 @@ class RunExecutionTest(unittest.TestCase):
 
     def _assert_no_sentinel(self) -> None:
         for name in _GENERATED:
-            path = self.repo / name
+            # The root assertion also catches a regression that writes an
+            # artifact back to the repository root.
+            self.assertFalse((self.repo / name).exists(), name)
+            path = self.live / name
             if path.exists():
                 self.assertNotIn(_SENTINEL.strip(), path.read_text(encoding="utf-8"))
 
     def _assert_generated_absent(self) -> None:
         for name in _GENERATED:
+            self.assertFalse((self.live / name).exists(), name)
             self.assertFalse((self.repo / name).exists(), name)
 
     def test_missing_binary_clears_every_preseeded_artifact(self) -> None:
@@ -286,7 +292,7 @@ class RunExecutionTest(unittest.TestCase):
             "cannot locate flpdf-test-pdf-doc-encoding",
             completed.stderr,
         )
-        self.assertFalse((self.repo / "received-tests.txt").exists())
+        self.assertFalse((self.live / "received-tests.txt").exists())
         self._assert_generated_absent()
 
     def test_nonexecuting_pdf_unicode_binary_fails_before_qtest(self) -> None:
@@ -302,7 +308,7 @@ class RunExecutionTest(unittest.TestCase):
 
         self.assertEqual(completed.returncode, 2)
         self.assertIn(f"{nonexecuting} is not executable", completed.stderr)
-        self.assertFalse((self.repo / "received-tests.txt").exists())
+        self.assertFalse((self.live / "received-tests.txt").exists())
         self._assert_generated_absent()
 
     def test_flpdf_dir_builds_and_exports_character_helpers(self) -> None:
@@ -372,7 +378,7 @@ class RunExecutionTest(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            (self.repo / "received-helper-env.txt")
+            (self.live / "received-helper-env.txt")
             .read_text(encoding="utf-8")
             .splitlines(),
             [
@@ -414,7 +420,7 @@ class RunExecutionTest(unittest.TestCase):
         self.assertIn("No space left on device", completed.stderr)
         self.assertIn("failed to create isolated qtest datadir", completed.stderr)
         self.assertIn("available space", completed.stderr)
-        self.assertFalse((self.repo / "received-tests.txt").exists())
+        self.assertFalse((self.live / "received-tests.txt").exists())
         partial_datadir = Path(
             (self.repo / "received-copy-datadir.txt").read_text(
                 encoding="utf-8"
@@ -435,7 +441,7 @@ class RunExecutionTest(unittest.TestCase):
             completed.stderr,
         )
         self.assertNotIn("Verdict: OK", completed.stdout)
-        self.assertFalse((self.repo / "received-tests.txt").exists())
+        self.assertFalse((self.live / "received-tests.txt").exists())
         self._assert_generated_absent()
 
     def test_each_run_uses_a_fresh_isolated_datadir(self) -> None:
@@ -445,28 +451,28 @@ class RunExecutionTest(unittest.TestCase):
 
         first = self._run("datadir-side-effect", full=True)
         first_datadir = Path(
-            (self.repo / "received-datadir.txt").read_text(encoding="utf-8")
+            (self.live / "received-datadir.txt").read_text(encoding="utf-8")
         )
         first_inputs = (
-            (self.repo / "received-tests.txt").read_text(encoding="utf-8"),
-            (self.repo / "qtest-results.xml").read_text(encoding="utf-8"),
+            (self.live / "received-tests.txt").read_text(encoding="utf-8"),
+            (self.live / "qtest-results.xml").read_text(encoding="utf-8"),
         )
         first_classification = (
-            (self.repo / "qtest-summary.md").read_text(encoding="utf-8"),
-            (self.repo / "qtest-parity-summary.md").read_text(encoding="utf-8"),
+            (self.live / "qtest-summary.md").read_text(encoding="utf-8"),
+            (self.live / "qtest-parity-summary.md").read_text(encoding="utf-8"),
         )
 
         second = self._run("datadir-side-effect", full=True)
         second_datadir = Path(
-            (self.repo / "received-datadir.txt").read_text(encoding="utf-8")
+            (self.live / "received-datadir.txt").read_text(encoding="utf-8")
         )
         second_inputs = (
-            (self.repo / "received-tests.txt").read_text(encoding="utf-8"),
-            (self.repo / "qtest-results.xml").read_text(encoding="utf-8"),
+            (self.live / "received-tests.txt").read_text(encoding="utf-8"),
+            (self.live / "qtest-results.xml").read_text(encoding="utf-8"),
         )
         second_classification = (
-            (self.repo / "qtest-summary.md").read_text(encoding="utf-8"),
-            (self.repo / "qtest-parity-summary.md").read_text(encoding="utf-8"),
+            (self.live / "qtest-summary.md").read_text(encoding="utf-8"),
+            (self.live / "qtest-parity-summary.md").read_text(encoding="utf-8"),
         )
 
         self.assertEqual(first.returncode, 0, first.stderr)
@@ -485,13 +491,13 @@ class RunExecutionTest(unittest.TestCase):
         self.assertIn("qtest results XML not found", completed.stderr)
         self.assertIn(
             "driver stopped before XML",
-            (self.repo / "harness.log").read_text(encoding="utf-8"),
+            (self.live / "harness.log").read_text(encoding="utf-8"),
         )
-        self.assertFalse((self.repo / "qtest.log").exists())
-        self.assertFalse((self.repo / "qtest-results.xml").exists())
-        self.assertFalse((self.repo / "TEST-qtest.xml").exists())
-        self.assertFalse((self.repo / "qtest-summary.md").exists())
-        self.assertFalse((self.repo / "qtest-metrics.jsonl").exists())
+        self.assertFalse((self.live / "qtest.log").exists())
+        self.assertFalse((self.live / "qtest-results.xml").exists())
+        self.assertFalse((self.live / "TEST-qtest.xml").exists())
+        self.assertFalse((self.live / "qtest-summary.md").exists())
+        self.assertFalse((self.live / "qtest-metrics.jsonl").exists())
         self._assert_no_sentinel()
 
     def test_parser_error_retains_current_failure_xml_without_stale_outputs(self) -> None:
@@ -500,19 +506,19 @@ class RunExecutionTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 1)
         self.assertIn("verify-allowlist: malformed XML", completed.stderr)
         self.assertEqual(
-            (self.repo / "qtest-results.xml").read_text(encoding="utf-8"),
+            (self.live / "qtest-results.xml").read_text(encoding="utf-8"),
             "<qtest-results>",
         )
         self.assertEqual(
-            (self.repo / "TEST-qtest.xml").read_text(encoding="utf-8"),
+            (self.live / "TEST-qtest.xml").read_text(encoding="utf-8"),
             "fresh junit\n",
         )
         self.assertEqual(
-            (self.repo / "qtest.log").read_text(encoding="utf-8"),
+            (self.live / "qtest.log").read_text(encoding="utf-8"),
             "fresh qtest log: malformed-xml\n",
         )
-        self.assertFalse((self.repo / "qtest-summary.md").exists())
-        metrics = self.repo / "qtest-metrics.jsonl"
+        self.assertFalse((self.live / "qtest-summary.md").exists())
+        metrics = self.live / "qtest-metrics.jsonl"
         self.assertTrue(not metrics.exists() or metrics.read_text(encoding="utf-8") == "")
         self._assert_no_sentinel()
 
@@ -523,13 +529,13 @@ class RunExecutionTest(unittest.TestCase):
         self.assertIn("Verdict: OK (empty allowlist)", completed.stdout)
         self.assertIn(
             "Verdict: OK (empty allowlist)",
-            (self.repo / "qtest-summary.md").read_text(encoding="utf-8"),
+            (self.live / "qtest-summary.md").read_text(encoding="utf-8"),
         )
-        self.assertFalse((self.repo / "qtest.log").exists())
-        self.assertFalse((self.repo / "qtest-results.xml").exists())
-        self.assertFalse((self.repo / "TEST-qtest.xml").exists())
-        self.assertFalse((self.repo / "qtest-metrics.jsonl").exists())
-        self.assertFalse((self.repo / "qtest-parity-summary.md").exists())
+        self.assertFalse((self.live / "qtest.log").exists())
+        self.assertFalse((self.live / "qtest-results.xml").exists())
+        self.assertFalse((self.live / "TEST-qtest.xml").exists())
+        self.assertFalse((self.live / "qtest-metrics.jsonl").exists())
+        self.assertFalse((self.live / "qtest-parity-summary.md").exists())
         self._assert_no_sentinel()
 
     def test_full_survey_writes_fresh_parity_and_step_summaries(self) -> None:
@@ -541,7 +547,7 @@ class RunExecutionTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        parity = (self.repo / "qtest-parity-summary.md").read_text(
+        parity = (self.live / "qtest-parity-summary.md").read_text(
             encoding="utf-8"
         )
         self.assertIn("# qtest parity manifest", parity)
@@ -551,7 +557,7 @@ class RunExecutionTest(unittest.TestCase):
         self.assertIn("# qtest-summary", summary)
         self.assertIn("# qtest parity manifest", summary)
         self.assertEqual(
-            (self.repo / "received-tests.txt").read_text(encoding="utf-8"),
+            (self.live / "received-tests.txt").read_text(encoding="utf-8"),
             "outside valid",
         )
         self._assert_no_sentinel()
@@ -563,7 +569,7 @@ class RunExecutionTest(unittest.TestCase):
         self.assertIn(
             "parity manifest validation requires QTEST_FULL=1", completed.stderr
         )
-        self.assertEqual((self.repo / "harness.log").read_text(encoding="utf-8"), "")
+        self.assertEqual((self.live / "harness.log").read_text(encoding="utf-8"), "")
         self._assert_no_sentinel()
 
     def test_manifest_operational_error_propagates_without_stale_summary(self) -> None:
@@ -575,7 +581,7 @@ class RunExecutionTest(unittest.TestCase):
 
         self.assertEqual(completed.returncode, 1)
         self.assertIn("verify-parity-manifest:", completed.stderr)
-        self.assertFalse((self.repo / "qtest-parity-summary.md").exists())
+        self.assertFalse((self.live / "qtest-parity-summary.md").exists())
         self._assert_no_sentinel()
 
     def test_invalid_only_nonempty_run_is_not_reported_as_success(self) -> None:
@@ -588,13 +594,13 @@ class RunExecutionTest(unittest.TestCase):
         )
         self.assertIn(
             'testid="invalid 1"',
-            (self.repo / "qtest-results.xml").read_text(encoding="utf-8"),
+            (self.live / "qtest-results.xml").read_text(encoding="utf-8"),
         )
         self.assertEqual(
-            (self.repo / "qtest.log").read_text(encoding="utf-8"),
+            (self.live / "qtest.log").read_text(encoding="utf-8"),
             "fresh qtest log: invalid-only\n",
         )
-        self.assertFalse((self.repo / "qtest-summary.md").exists())
-        metrics = self.repo / "qtest-metrics.jsonl"
+        self.assertFalse((self.live / "qtest-summary.md").exists())
+        metrics = self.live / "qtest-metrics.jsonl"
         self.assertTrue(not metrics.exists() or metrics.read_text(encoding="utf-8") == "")
         self._assert_no_sentinel()
