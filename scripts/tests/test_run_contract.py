@@ -142,7 +142,9 @@ class RunContractTest(unittest.TestCase):
         )
         self.assertRegex(
             section,
-            r"(?s)python3 scripts/verify-parity-manifest\.py \\\n+\s+harness\.log qtest-results\.xml parity/qtest-11\.9\.0\.jsonl",
+            r"(?s)python3 scripts/verify-parity-manifest\.py \\\n+\s+"
+            r"survey/latest/harness\.log survey/latest/qtest-results\.xml \\\n+\s+"
+            r"parity/qtest-11\.9\.0\.jsonl",
         )
         self.assertRegex(
             section,
@@ -328,8 +330,8 @@ class RunContractTest(unittest.TestCase):
             ),
             (
                 "validator-argument-order-inversion",
-                "harness.log qtest-results.xml parity/qtest-11.9.0.jsonl",
-                "qtest-results.xml harness.log parity/qtest-11.9.0.jsonl",
+                "survey/latest/harness.log survey/latest/qtest-results.xml",
+                "survey/latest/qtest-results.xml survey/latest/harness.log",
                 maintenance_check,
             ),
             (
