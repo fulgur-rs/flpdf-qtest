@@ -246,12 +246,16 @@ class RunExecutionTest(unittest.TestCase):
 
     def _assert_no_sentinel(self) -> None:
         for name in _GENERATED:
-            path = self.repo / name
+            # The root assertion also catches a regression that writes an
+            # artifact back to the repository root.
+            self.assertFalse((self.repo / name).exists(), name)
+            path = self.live / name
             if path.exists():
                 self.assertNotIn(_SENTINEL.strip(), path.read_text(encoding="utf-8"))
 
     def _assert_generated_absent(self) -> None:
         for name in _GENERATED:
+            self.assertFalse((self.live / name).exists(), name)
             self.assertFalse((self.repo / name).exists(), name)
 
     def test_missing_binary_clears_every_preseeded_artifact(self) -> None:

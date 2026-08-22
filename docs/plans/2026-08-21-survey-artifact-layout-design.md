@@ -109,18 +109,20 @@ maintenance".
 
 ## Migrating what exists
 
-303 untracked files at the root, classified against the working tree:
+310 files move, classified against the working tree. They fall into two
+groups git treats differently: 303 are untracked, and the 7 live artifacts are
+ignored by the current root patterns.
 
-| Destination | Pattern | Count |
-| --- | --- | --- |
-| `survey/findings/` | `FINDINGS-*.md` | 42 |
-| `survey/history/` | `*.{fullsurvey,baseline,scope}-*` | 179 |
-| `survey/history/` | `run-*.out` | 82 |
-| `survey/latest/` | the seven live artifacts (already ignored) | 7 |
+| Destination | Pattern | Count | Git status |
+| --- | --- | --- | --- |
+| `survey/findings/` | `FINDINGS-*.md` | 42 | untracked |
+| `survey/history/` | `*.{fullsurvey,baseline,scope}-*` | 179 | untracked |
+| `survey/history/` | `run-*.out` | 82 | untracked |
+| `survey/latest/` | the seven live artifacts | 7 | ignored |
 
-Every one is untracked, so this is a plain `mv`, not `git mv`. The migration
-must run in the primary checkout, since a fresh worktree would not contain
-these files at all.
+Neither group is in the index, so this is a plain `mv`, not `git mv`. The
+migration must run in the primary checkout, since a fresh worktree would not
+contain these files at all.
 
 ## Verification
 
