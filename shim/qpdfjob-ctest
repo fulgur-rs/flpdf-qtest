@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#
+# shim/qpdfjob-ctest — route qpdf's qpdfjob-ctest helper name to the
+# production Rust QPDFJob consumer.
+#
+# Required env:
+#   FLPDF_TEST_QPDFJOB_BIN — absolute path to qpdfjob-ctest.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_QPDFJOB_BIN:-}" ]]; then
+    echo "shim/qpdfjob-ctest: FLPDF_TEST_QPDFJOB_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_QPDFJOB_BIN}" ]]; then
+    echo "shim/qpdfjob-ctest: FLPDF_TEST_QPDFJOB_BIN=${FLPDF_TEST_QPDFJOB_BIN} is not executable" >&2
+    exit 127
+fi
+
+exec "${FLPDF_TEST_QPDFJOB_BIN}" "$@"

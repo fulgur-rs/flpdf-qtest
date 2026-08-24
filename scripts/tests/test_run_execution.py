@@ -81,6 +81,8 @@ class RunExecutionTest(unittest.TestCase):
                 my $mode = $ENV{"FAKE_QTEST_MODE"} // "";
                 open my $helper_env, ">", "received-helper-env.txt" or die $!;
                 print {$helper_env}
+                    ($ENV{"FLPDF_TEST_QPDFJOB_BIN"} // ""),
+                    "\n",
                     ($ENV{"FLPDF_TEST_PDF_DOC_ENCODING_BIN"} // ""),
                     "\n",
                     ($ENV{"FLPDF_TEST_PDF_UNICODE_BIN"} // ""),
@@ -218,6 +220,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_CLI_BIN": str(self.fake_binary),
                 "FLPDF_TEST_COMPARE_BIN": str(self.fake_binary),
                 "FLPDF_TEST_DRIVER_BIN": str(self.fake_binary),
+                "FLPDF_TEST_QPDFJOB_BIN": str(self.fake_binary),
                 "FLPDF_TEST_PDF_DOC_ENCODING_BIN": str(self.fake_binary),
                 "FLPDF_TEST_PDF_UNICODE_BIN": str(self.fake_binary),
                 "FLPDF_TEST_UNICODE_FILENAMES_BIN": str(self.fake_binary),
@@ -322,7 +325,7 @@ class RunExecutionTest(unittest.TestCase):
             "#!/usr/bin/env bash\n"
             "set -eu\n"
             "printf '%s\\n' \"$@\" > \"$FLPDF_DIR/cargo-args.txt\"\n"
-            "for name in flpdf flpdf-test-compare flpdf-test-driver "
+            "for name in flpdf flpdf-test-compare flpdf-test-driver qpdfjob-ctest "
                 "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode "
                 "flpdf-test-unicode-filenames test_xref test_parsedoffset; do\n"
             "  printf '#!/usr/bin/env sh\\nexit 0\\n' "
@@ -340,6 +343,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_CLI_BIN": None,
                 "FLPDF_TEST_COMPARE_BIN": None,
                 "FLPDF_TEST_DRIVER_BIN": None,
+                "FLPDF_TEST_QPDFJOB_BIN": None,
                 "FLPDF_TEST_PDF_DOC_ENCODING_BIN": None,
                 "FLPDF_TEST_PDF_UNICODE_BIN": None,
                 "FLPDF_TEST_UNICODE_FILENAMES_BIN": None,
@@ -366,6 +370,8 @@ class RunExecutionTest(unittest.TestCase):
                 "--bin",
                 "flpdf-test-driver",
                 "--bin",
+                "qpdfjob-ctest",
+                "--bin",
                 "flpdf-test-pdf-doc-encoding",
                 "--bin",
                 "flpdf-test-pdf-unicode",
@@ -382,6 +388,7 @@ class RunExecutionTest(unittest.TestCase):
             .read_text(encoding="utf-8")
             .splitlines(),
             [
+                str(release_dir / "qpdfjob-ctest"),
                 str(release_dir / "flpdf-test-pdf-doc-encoding"),
                 str(release_dir / "flpdf-test-pdf-unicode"),
                 str(release_dir / "flpdf-test-unicode-filenames"),
