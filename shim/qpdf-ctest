@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# shim/qpdf-ctest — route qpdf's C test helper name to the Rust test19 port.
+#
+# Required env:
+#   FLPDF_TEST_QPDF_CTEST_BIN — absolute path to qpdf-ctest.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_QPDF_CTEST_BIN:-}" ]]; then
+    echo "shim/qpdf-ctest: FLPDF_TEST_QPDF_CTEST_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_QPDF_CTEST_BIN}" ]]; then
+    echo "shim/qpdf-ctest: FLPDF_TEST_QPDF_CTEST_BIN=${FLPDF_TEST_QPDF_CTEST_BIN} is not executable" >&2
+    exit 127
+fi
+
+exec "${FLPDF_TEST_QPDF_CTEST_BIN}" "$@"

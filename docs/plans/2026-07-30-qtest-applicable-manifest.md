@@ -417,10 +417,12 @@ windows-shell-globbing
 Use the first stable run and each testcase's command/actual output from XML.
 Apply this exact precedence:
 
-1. C-API suite or testcase command beginning `qpdf-ctest ` → `excluded`,
-   rationale `C/C++ ABI route is outside Rust parity`, replacement
-   `bead:flpdf-25kg.2.1`. This includes direct `qpdf-ctest` invocations embedded
-   in otherwise portable suites.
+1. The deterministic-ID testcase command `qpdf-ctest 19` is a bounded
+   Rust-native portable writer-behavior adapter and follows the ordinary
+   observed outcome. Other C-API suite entries or testcase commands beginning
+   `qpdf-ctest ` → `excluded`, rationale `C/C++ ABI route is outside Rust
+   parity`, replacement `bead:flpdf-25kg.2.1`. This includes direct
+   `qpdf-ctest` invocations embedded in otherwise portable suites.
 2. Windows suite → `excluded`, rationale `Windows shell glob expansion is
    outside the Linux x86_64 gate`, replacement
    `scope:docs/superpowers/specs/2026-07-29-qpdf-observable-parity-roadmap-design.md#supported-platform`.

@@ -27,6 +27,10 @@
 #                           qpdf's qpdfjob-ctest.c helper, used by
 #                           shim/qpdfjob-ctest. Same resolution order as
 #                           FLPDF_CLI_BIN.
+#   FLPDF_TEST_QPDF_CTEST_BIN
+#                           Absolute path to qpdf-ctest, the Rust port of
+#                           qpdf-ctest.c test 19, used by shim/qpdf-ctest.
+#                           Same resolution order as FLPDF_CLI_BIN.
 #   FLPDF_TEST_PDF_DOC_ENCODING_BIN
 #                           Absolute path to flpdf-test-pdf-doc-encoding,
 #                           used by shim/test_pdf_doc_encoding. Same
@@ -52,11 +56,12 @@
 #                  FLPDF_CLI_BIN / FLPDF_TEST_COMPARE_BIN /
 #                  FLPDF_TEST_DRIVER_BIN /
 #                  FLPDF_TEST_QPDFJOB_BIN /
+#                  FLPDF_TEST_QPDF_CTEST_BIN /
 #                  FLPDF_TEST_PDF_DOC_ENCODING_BIN /
 #                  FLPDF_TEST_PDF_UNICODE_BIN /
 #                  FLPDF_TEST_UNICODE_FILENAMES_BIN /
 #                  FLPDF_TEST_XREF_BIN / FLPDF_TEST_PARSED_OFFSET_BIN is not,
-#                  the script runs one release build selecting all nine
+#                  the script runs one release build selecting all ten
 #                  binaries there and always
 #                  uses those freshly-built binaries.
 #   QTEST_FULL     When "1", run every *.test in vendor/qpdf-qtest/.
@@ -167,6 +172,18 @@ if [[ -z "${FLPDF_TEST_QPDFJOB_BIN:-}" ]]; then
     fi
 fi
 
+if [[ -z "${FLPDF_TEST_QPDF_CTEST_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_QPDF_CTEST_BIN="${FLPDF_DIR}/target/release/qpdf-ctest"
+    elif [[ -x "${repo_root}/flpdf/target/release/qpdf-ctest" ]]; then
+        FLPDF_TEST_QPDF_CTEST_BIN="${repo_root}/flpdf/target/release/qpdf-ctest"
+    else
+        echo "run.sh: cannot locate qpdf-ctest (set FLPDF_TEST_QPDF_CTEST_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
+fi
+
 if [[ -z "${FLPDF_TEST_PDF_DOC_ENCODING_BIN:-}" ]]; then
     if [[ -n "${FLPDF_DIR:-}" ]]; then
         need_build=1
@@ -228,14 +245,15 @@ if [[ -z "${FLPDF_TEST_PARSED_OFFSET_BIN:-}" ]]; then
 fi
 
 if [[ ${need_build} -eq 1 ]]; then
-    echo "==> Building flpdf and nine qtest helper binaries in ${FLPDF_DIR}"
-    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset )
+    echo "==> Building flpdf and ten qtest helper binaries in ${FLPDF_DIR}"
+    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset )
 fi
 
 export FLPDF_CLI_BIN
 export FLPDF_TEST_COMPARE_BIN
 export FLPDF_TEST_DRIVER_BIN
 export FLPDF_TEST_QPDFJOB_BIN
+export FLPDF_TEST_QPDF_CTEST_BIN
 export FLPDF_TEST_PDF_DOC_ENCODING_BIN
 export FLPDF_TEST_PDF_UNICODE_BIN
 export FLPDF_TEST_UNICODE_FILENAMES_BIN
@@ -247,6 +265,7 @@ for bin in \
     "${FLPDF_TEST_COMPARE_BIN}" \
     "${FLPDF_TEST_DRIVER_BIN}" \
     "${FLPDF_TEST_QPDFJOB_BIN}" \
+    "${FLPDF_TEST_QPDF_CTEST_BIN}" \
     "${FLPDF_TEST_PDF_DOC_ENCODING_BIN}" \
     "${FLPDF_TEST_PDF_UNICODE_BIN}" \
     "${FLPDF_TEST_UNICODE_FILENAMES_BIN}" \
