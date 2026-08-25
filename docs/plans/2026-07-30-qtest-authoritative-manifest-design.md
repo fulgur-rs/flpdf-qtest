@@ -26,6 +26,9 @@ tests, and implementation work.
 - C and C++ ABI and symbol compatibility are excluded.
 - Portable behavior reached through a C or platform-specific helper is
   represented by a Rust oracle test or assigned to a follow-up Bead.
+- The deterministic-ID suite's `qpdf-ctest 19` row is an explicit portable
+  writer-behavior exception: its Rust-native helper does not provide C ABI or
+  symbol compatibility.
 - The manifest is explicit: one JSON object per authoritative qtest subtest.
 - A subtest's identity is qtest's XML `testid` (category and ordinal), not its
   description or enclosing `.test` filename.
@@ -289,7 +292,8 @@ differ.
 
 Apply classification in this order:
 
-1. exclusions for Windows-only and ABI/symbol-only behavior;
+1. exclusions for Windows-only and ABI/symbol-only behavior, except the
+   deterministic-ID `qpdf-ctest 19` portable writer-behavior adapter;
 2. represented behavior with already verified Rust oracle tests;
 3. ordinary qtest passes;
 4. known observation blockers;

@@ -84,6 +84,31 @@ class RunContractTest(unittest.TestCase):
                 rf"/flpdf/target/release/{re.escape(binary)}",
             )
 
+    def test_runner_resolves_and_exports_qpdf_ctest(self) -> None:
+        variable = "FLPDF_TEST_QPDF_CTEST_BIN"
+        binary = "qpdf-ctest"
+        self.assertIn(f'if [[ -z "${{{variable}:-}}" ]]', self.script)
+        self.assertIn(
+            f'{variable}="${{FLPDF_DIR}}/target/release/{binary}"',
+            self.script,
+        )
+        self.assertIn(
+            f'{variable}="${{repo_root}}/flpdf/target/release/{binary}"',
+            self.script,
+        )
+        self.assertIn(f"export {variable}", self.script)
+        self.assertIn(f'"${{{variable}}}"', self.script)
+        self.assertRegex(
+            self.script,
+            rf"cargo build .*--bin {re.escape(binary)}",
+        )
+        self.assertIn(f"--bin {binary}", self.workflow)
+        self.assertRegex(
+            self.workflow,
+            rf"{variable}:\s+\$\{{\{{ github\.workspace \}}\}}"
+            rf"/flpdf/target/release/{re.escape(binary)}",
+        )
+
     def _parity_ledger_section(self) -> str:
         readme = (_ROOT / "README.md").read_text(encoding="utf-8")
         match = re.search(
