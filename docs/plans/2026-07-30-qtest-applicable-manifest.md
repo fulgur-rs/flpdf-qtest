@@ -420,7 +420,7 @@ Apply this exact precedence:
 1. The deterministic-ID testcase command `qpdf-ctest 19` is a bounded
    Rust-native portable writer-behavior adapter and follows the ordinary
    observed outcome. Other C-API suite entries or testcase commands beginning
-   `qpdf-ctest ` → `excluded`, rationale `C/C++ ABI route is outside Rust
+   with `qpdf-ctest` followed by a space → `excluded`, rationale `C/C++ ABI route is outside Rust
    parity`, replacement `bead:flpdf-25kg.2.1`. This includes direct
    `qpdf-ctest` invocations embedded in otherwise portable suites.
 2. Windows suite → `excluded`, rationale `Windows shell glob expansion is

@@ -107,9 +107,9 @@ Useful env knobs:
 - `QTEST_FULL=1` — run every `*.test` in `vendor/qpdf-qtest/`; required for
   every non-empty run and for parity validation.
 - `FLPDF_DIR=/path/to/flpdf` — if any of `FLPDF_CLI_BIN`,
-  `FLPDF_TEST_COMPARE_BIN`, `FLPDF_TEST_DRIVER_BIN`, `FLPDF_TEST_QPDFJOB_BIN`,
-  or `FLPDF_TEST_QPDF_CTEST_BIN`,
-  `FLPDF_TEST_PDF_DOC_ENCODING_BIN`, or `FLPDF_TEST_PDF_UNICODE_BIN` is
+  `FLPDF_TEST_COMPARE_BIN`, `FLPDF_TEST_DRIVER_BIN`,
+  `FLPDF_TEST_QPDFJOB_BIN`, or `FLPDF_TEST_QPDF_CTEST_BIN`,
+  `FLPDF_TEST_PDF_DOC_ENCODING_BIN`, `FLPDF_TEST_PDF_UNICODE_BIN`,
   `FLPDF_TEST_UNICODE_FILENAMES_BIN`, `FLPDF_TEST_XREF_BIN`, or
   `FLPDF_TEST_PARSED_OFFSET_BIN` is unset, build all ten binaries in that
   checkout, using the built path for each binary whose environment variable is
