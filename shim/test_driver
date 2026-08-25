@@ -14,10 +14,11 @@
 #   FLPDF_TEST_DRIVER_BIN   — absolute path to the flpdf-test-driver
 #                             binary to delegate to.
 #
-# Optional env:
-#   FLPDF_QTEST_NORMALIZE   — when set to a sed script path, stderr is
-#                             filtered through it (same channel as
-#                             shim/qpdf and shim/qpdf-test-compare).
+# `flpdf-test-driver` already emits qpdf-shaped diagnostics. Its stdout flush
+# and stderr warning order are observable in basic-parsing.test, so this shim
+# must forward both descriptors directly. In particular, routing stderr
+# through a process substitution would decouple it from stdout and move
+# warnings past later stdout bytes.
 
 set -u
 
@@ -29,10 +30,6 @@ fi
 if [[ ! -x "${FLPDF_TEST_DRIVER_BIN}" ]]; then
     echo "shim/test_driver: FLPDF_TEST_DRIVER_BIN=${FLPDF_TEST_DRIVER_BIN} is not executable" >&2
     exit 127
-fi
-
-if [[ -n "${FLPDF_QTEST_NORMALIZE:-}" && -r "${FLPDF_QTEST_NORMALIZE}" ]]; then
-    exec "${FLPDF_TEST_DRIVER_BIN}" "$@" 2> >(sed -f "${FLPDF_QTEST_NORMALIZE}" 1>&2)
 fi
 
 exec "${FLPDF_TEST_DRIVER_BIN}" "$@"
