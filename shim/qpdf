@@ -27,6 +27,11 @@ if [[ ! -x "${FLPDF_CLI_BIN}" ]]; then
     exit 127
 fi
 
+# The delegated binary is flpdf-cli, but this process is the qpdf command
+# surface. Preserve an explicit override for focused probes while giving the
+# Rust QPDFJob the same default prefix as qpdf 11.9.0.
+export FLPDF_PROGNAME="${FLPDF_PROGNAME:-qpdf}"
+
 if [[ -n "${FLPDF_QTEST_NORMALIZE:-}" && -r "${FLPDF_QTEST_NORMALIZE}" ]]; then
     set -o pipefail
     "${FLPDF_CLI_BIN}" "$@" 2>&1 | sed -f "${FLPDF_QTEST_NORMALIZE}"
