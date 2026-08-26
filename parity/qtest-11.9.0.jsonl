@@ -2165,7 +2165,7 @@
 {"id":"object-stream 171","suite":"object-stream","category":"object-stream","ordinal":171,"description":"check file","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"object-stream 172","suite":"object-stream","category":"object-stream","ordinal":172,"description":"generate object streams for gen > 0","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"object-stream 173","suite":"object-stream","category":"object-stream","ordinal":173,"description":"check file","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"object-stream 174","suite":"object-stream","category":"object-stream","ordinal":174,"description":"recover file with xref stream","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.6","replacement_ref":null}
+{"id":"object-stream 174","suite":"object-stream","category":"object-stream","ordinal":174,"description":"recover file with xref stream","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"object-stream 175","suite":"object-stream","category":"object-stream","ordinal":175,"description":"check file","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"outlines 1","suite":"outlines","category":"outlines","ordinal":1,"description":"outlines: page-labels-and-outlines","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"outlines 2","suite":"outlines","category":"outlines","ordinal":2,"description":"outlines: outlines-with-actions","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
