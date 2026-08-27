@@ -535,6 +535,44 @@ class RunContractTest(unittest.TestCase):
         }
         self.assertIn("survey/latest/", ignored)
 
+    @property
+    def publish(self) -> str:
+        return (_ROOT / "scripts" / "publish-metrics.sh").read_text(encoding="utf-8")
+
+    def test_publish_accepts_and_appends_the_parity_series(self) -> None:
+        """The parity trend needs its own history file on metrics-data, fed by
+        a second argument so the allowlist path is unchanged when it is absent."""
+        self.assertIn("parity_line=", self.publish)
+        self.assertIn("parity-metrics.jsonl", self.publish)
+
+    def test_publish_renders_both_charts_with_both_renderers(self) -> None:
+        """Four SVGs: each series rendered by vl-convert and by fulgur-chart."""
+        for svg in (
+            "trend.svg",
+            "trend-fulgur.svg",
+            "trend-parity.svg",
+            "trend-parity-fulgur.svg",
+        ):
+            self.assertIn(svg, self.publish, svg)
+        self.assertRegex(self.publish, r"--series\s+parity")
+
+    def test_publish_pins_chart_cli_version(self) -> None:
+        """The dogfood renderer stays pinned; an unpinned npx would pull
+        whatever is latest at render time into the nightly job."""
+        self.assertRegex(
+            self.publish, r'FULGUR_CHART_CLI_VERSION="[0-9]+\.[0-9]+\.[0-9]+"'
+        )
+        self.assertIn(
+            '"@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}"', self.publish
+        )
+
+    def test_ci_passes_the_parity_metrics_to_publish(self) -> None:
+        self.assertRegex(
+            self.workflow,
+            r"publish-metrics\.sh\s+artifacts/qtest-metrics\.jsonl\s+"
+            r"artifacts/qtest-parity-metrics\.jsonl",
+        )
+
     def test_ci_publishes_scheduled_metrics_after_qtest_failure(self) -> None:
         publish_metrics = self.workflow.split("  publish-metrics:", maxsplit=1)[1]
         self.assertRegex(

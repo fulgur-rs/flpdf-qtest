@@ -153,4 +153,4 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/publish-metrics.sh artifacts/qtest-metrics.jsonl
+        run: ./scripts/publish-metrics.sh artifacts/qtest-metrics.jsonl artifacts/qtest-parity-metrics.jsonl

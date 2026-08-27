@@ -22,7 +22,11 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-new_line="${1:?usage: publish-metrics.sh <new-metrics-line.jsonl>}"
+new_line="${1:?usage: publish-metrics.sh <new-metrics-line.jsonl> [parity-line.jsonl]}"
+# Optional: the parity ledger's own record for this run. Absent on older
+# artifacts (the parity series only exists from 2026-07-30), so the parity
+# history and its charts are simply left untouched when it is missing.
+parity_line="${2:-}"
 
 if [[ ! -s "${new_line}" ]]; then
     echo "publish-metrics: no metrics line to publish (${new_line} empty/absent)"
@@ -110,6 +114,25 @@ if [[ -f "${trust_dir}/metrics.jsonl" && -n "$(tail -c 1 "${trust_dir}/metrics.j
 fi
 cat "${new_line}" >> "${trust_dir}/metrics.jsonl"
 
+# Same for the parity ledger's history, when this run produced one.
+parity_ok=0
+if [[ -s "${parity_line}" ]]; then
+    if [[ -f "${work}/parity-metrics.jsonl" ]]; then
+        cp "${work}/parity-metrics.jsonl" "${trust_dir}/parity-metrics.jsonl"
+    fi
+    if [[ -f "${trust_dir}/parity-metrics.jsonl" \
+        && -n "$(tail -c 1 "${trust_dir}/parity-metrics.jsonl")" ]]; then
+        echo "" >> "${trust_dir}/parity-metrics.jsonl"
+    fi
+    cat "${parity_line}" >> "${trust_dir}/parity-metrics.jsonl"
+    parity_ok=1
+elif [[ -f "${work}/parity-metrics.jsonl" ]]; then
+    # No new record, but a history exists: carry it forward unchanged so the
+    # branch keeps the file and its charts.
+    cp "${work}/parity-metrics.jsonl" "${trust_dir}/parity-metrics.jsonl"
+    parity_ok=1
+fi
+
 # Re-render the trend chart from the full history. --spec-output emits the
 # Vega-Lite spec that fulgur-chart consumes below; the file is intermediate and
 # not committed to the branch.
@@ -117,6 +140,13 @@ python3 "${repo_root}/scripts/plot-metrics.py" \
     --input "${trust_dir}/metrics.jsonl" \
     --output "${trust_dir}/trend.svg" \
     --spec-output "${trust_dir}/spec.json"
+if [[ ${parity_ok} -eq 1 ]]; then
+    python3 "${repo_root}/scripts/plot-metrics.py" \
+        --input "${trust_dir}/parity-metrics.jsonl" \
+        --output "${trust_dir}/trend-parity.svg" \
+        --spec-output "${trust_dir}/spec-parity.json" \
+        --series parity
+fi
 
 # Capture blob SHAs *before* the render. `hash-object -w` reads each file
 # (currently a regular file we just wrote — no symlink) and stores the
@@ -128,6 +158,12 @@ python3 "${repo_root}/scripts/plot-metrics.py" \
 # the working tree at commit time.
 metrics_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/metrics.jsonl")
 trend_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/trend.svg")
+parity_metrics_blob=""
+parity_trend_blob=""
+if [[ ${parity_ok} -eq 1 ]]; then
+    parity_metrics_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/parity-metrics.jsonl")
+    parity_trend_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/trend-parity.svg")
+fi
 
 # Also render via fulgur-chart (dogfooding — sibling project still under
 # active development). Invoked via npx so no persistent install is needed:
@@ -149,10 +185,20 @@ trend_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/trend.svg")
 #   3. GH_TOKEN is unset in the shell and env -u is a belt-and-suspenders
 #      scrub on the child.
 FULGUR_CHART_CLI_VERSION="0.1.20"
-fulgur_ok=0
-if command -v npx >/dev/null; then
+
+# Render one spec via fulgur-chart. $1 = spec path, $2 = output basename.
+# Echoes nothing; sets the named variable in $3 to 1 on success. Factored out
+# so the allowlist and parity charts share one hardened invocation rather than
+# two copies drifting apart.
+render_fulgur() {
+    local spec_path="$1" out_name="$2" __ok_var="$3"
+    local render_dir
+    printf -v "${__ok_var}" '%s' 0
+    if [[ ! -s "${spec_path}" ]]; then
+        return 0
+    fi
     render_dir="$(mktemp -d)"
-    cp "${trust_dir}/spec.json" "${render_dir}/spec.json"
+    cp "${spec_path}" "${render_dir}/spec.json"
     # 120s covers the cold-cache `npx --yes` install (registry fetch of the
     # pinned prebuilt binary) plus the actual render. If chart-cli or the
     # registry hangs, timeout kills it so the nightly job doesn't sit blocked
@@ -161,7 +207,7 @@ if command -v npx >/dev/null; then
     if (cd "${render_dir}" && env -u GH_TOKEN \
             timeout --kill-after=5s 120s npx --yes \
             "@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}" \
-            render spec.json -o trend-fulgur.svg --dsl vegalite); then
+            render spec.json -o "${out_name}" --dsl vegalite); then
         # Reject anything but a regular file (not a symlink, FIFO, socket,
         # or device) before touching the output. A compromised chart-cli
         # that mkfifo'd the output path would otherwise cause `head` to
@@ -169,17 +215,28 @@ if command -v npx >/dev/null; then
         # only wraps npx, not this validation. `-f` is false for FIFOs and
         # sockets, and `! -L` rules out symlinks that could point at an
         # arbitrary slow file.
-        if [[ -f "${render_dir}/trend-fulgur.svg" && ! -L "${render_dir}/trend-fulgur.svg" ]] \
-            && head -c 5 "${render_dir}/trend-fulgur.svg" 2>/dev/null | grep -q '<svg'; then
-            fulgur_ok=1
+        if [[ -f "${render_dir}/${out_name}" && ! -L "${render_dir}/${out_name}" ]] \
+            && head -c 5 "${render_dir}/${out_name}" 2>/dev/null | grep -q '<svg'; then
+            cp "${render_dir}/${out_name}" "${trust_dir}/${out_name}"
+            printf -v "${__ok_var}" '%s' 1
         else
-            echo "publish-metrics: fulgur-chart output was not a regular SVG file; keeping previous" >&2
+            echo "publish-metrics: fulgur-chart output for ${out_name} was not a regular SVG file; keeping previous" >&2
         fi
     else
-        echo "publish-metrics: fulgur-chart render failed; keeping previous trend-fulgur.svg" >&2
+        echo "publish-metrics: fulgur-chart render failed for ${out_name}; keeping previous" >&2
+    fi
+    rm -rf "${render_dir}"
+}
+
+fulgur_ok=0
+fulgur_parity_ok=0
+if command -v npx >/dev/null; then
+    render_fulgur "${trust_dir}/spec.json" trend-fulgur.svg fulgur_ok
+    if [[ ${parity_ok} -eq 1 ]]; then
+        render_fulgur "${trust_dir}/spec-parity.json" trend-parity-fulgur.svg fulgur_parity_ok
     fi
 else
-    echo "publish-metrics: npx not on PATH; skipping dogfood chart" >&2
+    echo "publish-metrics: npx not on PATH; skipping dogfood charts" >&2
 fi
 
 # Resolve trend-fulgur.svg's blob. When the render succeeded, hash the fresh
@@ -189,7 +246,7 @@ fi
 # fall through.
 fulgur_blob=""
 if [[ ${fulgur_ok} -eq 1 ]]; then
-    fulgur_blob=$(git -C "${work}" hash-object -w -- "${render_dir}/trend-fulgur.svg")
+    fulgur_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/trend-fulgur.svg")
 elif [[ -n "${parent_sha}" ]]; then
     # --verify -q: without it, `git rev-parse <sha>:<missing-path>` prints
     # the literal revspec to stdout (before erroring on stderr and exiting
@@ -198,44 +255,58 @@ elif [[ -n "${parent_sha}" ]]; then
     # miss so the || fallback resolves to the empty string as intended.
     fulgur_blob=$(git -C "${work}" rev-parse --verify -q "${parent_sha}:trend-fulgur.svg" 2>/dev/null || echo "")
 fi
-[[ -n "${render_dir:-}" ]] && rm -rf "${render_dir}"
 
-# Compose README from a heredoc, hash the bytes directly via --stdin so no
+parity_fulgur_blob=""
+if [[ ${fulgur_parity_ok} -eq 1 ]]; then
+    parity_fulgur_blob=$(git -C "${work}" hash-object -w -- "${trust_dir}/trend-parity-fulgur.svg")
+elif [[ -n "${parent_sha}" ]]; then
+    parity_fulgur_blob=$(git -C "${work}" rev-parse --verify -q "${parent_sha}:trend-parity-fulgur.svg" 2>/dev/null || echo "")
+fi
+
+# Compose README section by section, hash the bytes directly via --stdin so no
 # tampering vector along the trust_dir path can influence it, and record its
-# blob SHA.
-if [[ -n "${fulgur_blob}" ]]; then
-    readme_blob=$(git -C "${work}" hash-object -w --stdin <<'EOF'
-# qtest nightly metrics
+# blob SHA. A section is emitted only when its chart resolved to a blob, so the
+# README never links a file the tree does not carry.
+readme_text="# qtest nightly metrics
 
 Time series of the nightly qtest acceptance run, one JSON record per night in
-`metrics.jsonl`. See the main branch for the harness itself.
+\`metrics.jsonl\`. See the main branch for the harness itself.
 
 ## Trend (Vega-Lite via vl-convert)
 
 ![trend](trend.svg)
-
+"
+if [[ -n "${fulgur_blob}" ]]; then
+    readme_text+="
 ## Trend (fulgur-chart — dogfooding)
 
 Rendered from the same Vega-Lite spec via [fulgur-chart](https://github.com/fulgur-rs/fulgur-chart)'s
-`--dsl vegalite` subset. Kept alongside the canonical chart while fulgur-chart is under active
+\`--dsl vegalite\` subset. Kept alongside the canonical chart while fulgur-chart is under active
 development; discrepancies are expected and are the point.
 
 ![trend-fulgur](trend-fulgur.svg)
-EOF
-    )
-else
-    readme_blob=$(git -C "${work}" hash-object -w --stdin <<'EOF'
-# qtest nightly metrics
-
-Time series of the nightly qtest acceptance run, one JSON record per night in
-`metrics.jsonl`. See the main branch for the harness itself.
-
-## Trend (Vega-Lite via vl-convert)
-
-![trend](trend.svg)
-EOF
-    )
+"
 fi
+if [[ -n "${parity_metrics_blob}" ]]; then
+    readme_text+="
+## Parity ledger trend (Vega-Lite via vl-convert)
+
+Ledger state counts from \`parity-metrics.jsonl\`. \`passing\` should climb while
+\`blocked\` and \`failing\` drain into it. \`excluded\` is omitted — it is a scope
+decision, not progress. The series starts 2026-07-30, when the parity manifest
+was introduced; nights before that have no parity data to plot.
+
+![trend-parity](trend-parity.svg)
+"
+fi
+if [[ -n "${parity_fulgur_blob}" ]]; then
+    readme_text+="
+## Parity ledger trend (fulgur-chart — dogfooding)
+
+![trend-parity-fulgur](trend-parity-fulgur.svg)
+"
+fi
+readme_blob=$(printf '%s' "${readme_text}" | git -C "${work}" hash-object -w --stdin)
 
 # Assemble the tree from the captured blob SHAs. This is the pivotal step:
 # `mktree` builds the tree object purely from these SHAs, never consulting
@@ -252,6 +323,13 @@ tree_sha=$({
     printf '100644 blob %s\ttrend.svg\n' "${trend_blob}"
     if [[ -n "${fulgur_blob}" ]]; then
         printf '100644 blob %s\ttrend-fulgur.svg\n' "${fulgur_blob}"
+    fi
+    if [[ -n "${parity_metrics_blob}" ]]; then
+        printf '100644 blob %s\tparity-metrics.jsonl\n' "${parity_metrics_blob}"
+        printf '100644 blob %s\ttrend-parity.svg\n' "${parity_trend_blob}"
+    fi
+    if [[ -n "${parity_fulgur_blob}" ]]; then
+        printf '100644 blob %s\ttrend-parity-fulgur.svg\n' "${parity_fulgur_blob}"
     fi
 } | git -C "${work}" mktree)
 
