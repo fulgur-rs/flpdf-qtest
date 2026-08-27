@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import json
 import tempfile
 import textwrap
 import unittest
@@ -107,7 +108,7 @@ class BuildSpecTest(unittest.TestCase):
         ]
         values = plot_metrics.build_spec(recs)["data"]["values"]
         # Only the timestamped record contributes (one row per series).
-        self.assertEqual(len(values), len(plot_metrics._SERIES))
+        self.assertEqual(len(values), len(plot_metrics.ALLOWLIST_SERIES))
         self.assertTrue(all(v["timestamp"] for v in values))
 
     def test_missing_metric_defaults_to_zero(self) -> None:
@@ -124,6 +125,63 @@ class RenderSvgTest(unittest.TestCase):
         recs = plot_metrics.load_records(_tmp(_SAMPLE))
         svg = plot_metrics.render_svg(plot_metrics.build_spec(recs))
         self.assertTrue(svg.lstrip().startswith("<svg"))
+
+
+_PARITY_SAMPLE = textwrap.dedent(
+    """\
+    {"timestamp":"2026-07-30T00:00:00Z","flpdf_commit":"a","total":2770,"passing":300,"failing":500,"blocked":1700,"applicable":13,"excluded":193,"verdict":"FAIL"}
+    {"timestamp":"2026-08-27T00:00:00Z","flpdf_commit":"b","total":2777,"passing":1670,"failing":370,"blocked":540,"applicable":3,"excluded":194,"verdict":"OK"}
+    """
+)
+
+
+class SeriesSelectionTest(unittest.TestCase):
+    """build_spec plots whichever series it is given, so one script can render
+    both the allowlist trend and the parity trend."""
+
+    def test_defaults_to_allowlist_series(self) -> None:
+        recs = plot_metrics.load_records(_tmp(_SAMPLE))
+        metrics = {v["metric"] for v in plot_metrics.build_spec(recs)["data"]["values"]}
+        self.assertEqual(metrics, set(plot_metrics.ALLOWLIST_SERIES))
+
+    def test_parity_series_are_plotted_when_requested(self) -> None:
+        recs = plot_metrics.load_records(_tmp(_PARITY_SAMPLE))
+        spec = plot_metrics.build_spec(recs, series=plot_metrics.PARITY_SERIES)
+        by = {(v["metric"], v["timestamp"]): v["value"] for v in spec["data"]["values"]}
+        self.assertEqual(by[("passing", "2026-08-27T00:00:00Z")], 1670)
+        self.assertEqual(by[("blocked", "2026-08-27T00:00:00Z")], 540)
+        self.assertEqual(by[("failing", "2026-08-27T00:00:00Z")], 370)
+
+    def test_parity_series_excludes_allowlist_metrics(self) -> None:
+        """A parity chart must not silently plot zeros for allowlist fields the
+        parity records never carry."""
+        recs = plot_metrics.load_records(_tmp(_PARITY_SAMPLE))
+        metrics = {
+            v["metric"]
+            for v in plot_metrics.build_spec(recs, series=plot_metrics.PARITY_SERIES)["data"]["values"]
+        }
+        self.assertNotIn("candidates", metrics)
+        self.assertNotIn("regressions", metrics)
+
+    def test_title_is_overridable(self) -> None:
+        recs = plot_metrics.load_records(_tmp(_PARITY_SAMPLE))
+        spec = plot_metrics.build_spec(recs, series=plot_metrics.PARITY_SERIES,
+                                       title="qtest parity trend")
+        self.assertEqual(spec["title"], "qtest parity trend")
+
+    def test_main_accepts_series_flag(self) -> None:
+        jsonl = _tmp(_PARITY_SAMPLE)
+        spec_out = _tmp("", suffix=".json")
+        rc = plot_metrics.main([
+            "--input", str(jsonl),
+            "--output", str(_tmp("", suffix=".svg")),
+            "--spec-output", str(spec_out),
+            "--series", "parity",
+        ])
+        self.assertEqual(rc, 0)
+        spec = json.loads(spec_out.read_text(encoding="utf-8"))
+        metrics = {v["metric"] for v in spec["data"]["values"]}
+        self.assertEqual(metrics, set(plot_metrics.PARITY_SERIES))
 
 
 @unittest.skipUnless(_HAS_VLC, "vl-convert-python not installed")
@@ -151,7 +209,7 @@ class MainTest(unittest.TestCase):
         spec = _json.loads(spec_out.read_text(encoding="utf-8"))
         self.assertIn("vega-lite", spec["$schema"])
         metrics = {v["metric"] for v in spec["data"]["values"]}
-        self.assertEqual(metrics, set(plot_metrics._SERIES))
+        self.assertEqual(metrics, set(plot_metrics.ALLOWLIST_SERIES))
 
 
 if __name__ == "__main__":

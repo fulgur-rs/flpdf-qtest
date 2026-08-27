@@ -24,7 +24,20 @@ from pathlib import Path
 # candidates should trend down as they are promoted into allowlist, and
 # allowlist (the size of the allowlist itself) should trend up as candidates
 # get promoted.
-_SERIES = ("regressions", "missing", "candidates", "allowlist")
+ALLOWLIST_SERIES = ("regressions", "missing", "candidates", "allowlist")
+
+# The parity ledger's own trend. passing should climb, blocked and failing
+# should drain into it, and applicable should stay near zero -- it is the
+# state for evidence that cannot yet tell a blocked observation from a
+# reached failure, so a growing applicable means triage is falling behind.
+# excluded is deliberately left out: it is a scope decision, not progress.
+PARITY_SERIES = ("passing", "blocked", "failing", "applicable")
+
+_SERIES_BY_NAME = {"allowlist": ALLOWLIST_SERIES, "parity": PARITY_SERIES}
+_TITLE_BY_NAME = {
+    "allowlist": "qtest nightly trend",
+    "parity": "qtest parity trend",
+}
 
 
 def load_records(path: Path) -> list[dict]:
@@ -47,16 +60,23 @@ def load_records(path: Path) -> list[dict]:
     return records
 
 
-def build_spec(records: list[dict]) -> dict:
+def build_spec(
+    records: list[dict],
+    series: tuple[str, ...] = ALLOWLIST_SERIES,
+    title: str = "qtest nightly trend",
+) -> dict:
     """Build a Vega-Lite spec: a multi-series line chart of the metrics over
     time. Records are folded into long form (timestamp, metric, value) so each
-    series gets its own colored line."""
+    series gets its own colored line.
+
+    ``series`` selects which fields to plot, so one renderer serves both the
+    allowlist trend and the parity trend rather than duplicating the spec."""
     values: list[dict] = []
     for r in records:
         timestamp = r.get("timestamp")
         if not timestamp:
             continue  # a record with no timestamp can't be placed on the axis
-        for metric in _SERIES:
+        for metric in series:
             value = r.get(metric)
             values.append(
                 {
@@ -67,7 +87,7 @@ def build_spec(records: list[dict]) -> dict:
             )
     return {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": "qtest nightly trend",
+        "title": title,
         "width": 720,
         "height": 320,
         "background": "white",
@@ -110,6 +130,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--input", type=Path, required=True, help="metrics JSONL")
     ap.add_argument("--output", type=Path, required=True, help="output SVG path")
     ap.add_argument(
+        "--series",
+        choices=sorted(_SERIES_BY_NAME),
+        default="allowlist",
+        help="which metric family to plot (default: allowlist)",
+    )
+    ap.add_argument(
+        "--title",
+        default=None,
+        help="chart title (default: derived from --series)",
+    )
+    ap.add_argument(
         "--spec-output",
         type=Path,
         default=None,
@@ -125,7 +156,9 @@ def main(argv: list[str] | None = None) -> int:
     if not records:
         print("plot-metrics: no records to plot", file=sys.stderr)
         return 1
-    spec = build_spec(records)
+    series = _SERIES_BY_NAME[args.series]
+    title = args.title or _TITLE_BY_NAME[args.series]
+    spec = build_spec(records, series=series, title=title)
     if args.spec_output is not None:
         args.spec_output.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     svg = render_svg(spec)

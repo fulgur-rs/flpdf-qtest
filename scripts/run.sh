@@ -100,6 +100,7 @@ summary="${live_dir}/qtest-summary.md"
 metrics="${live_dir}/qtest-metrics.jsonl"
 manifest="${repo_root}/parity/qtest-11.9.0.jsonl"
 parity_summary="${live_dir}/qtest-parity-summary.md"
+parity_metrics="${live_dir}/qtest-parity-metrics.jsonl"
 rm -f \
     "${log}" \
     "${qtest_log}" \
@@ -107,7 +108,8 @@ rm -f \
     "${qtest_junit}" \
     "${summary}" \
     "${metrics}" \
-    "${parity_summary}"
+    "${parity_summary}" \
+    "${parity_metrics}"
 
 # --- locate flpdf-cli and flpdf-test-compare ---------------------------------
 #
@@ -442,4 +444,14 @@ parity_args=(
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     parity_args+=( --step-summary "${GITHUB_STEP_SUMMARY}" )
 fi
+
+# The parity ledger gets its own time series. verify-allowlist.py owns
+# qtest-metrics.jsonl, so keeping these separate means neither validator has
+# to know the other's schema, and the two trends stay independently plottable.
+: > "${parity_metrics}"
+parity_args+=(
+    --metrics "${parity_metrics}"
+    --commit "${FLPDF_COMMIT:-}"
+    --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+)
 python3 "${repo_root}/scripts/verify-parity-manifest.py" "${parity_args[@]}"

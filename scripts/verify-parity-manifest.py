@@ -274,6 +274,31 @@ def validate_manifest(
     )
 
 
+def build_metrics(
+    run: RunResults,
+    validation: Validation,
+    *,
+    commit: str,
+    timestamp: str,
+) -> dict:
+    """Build one time-series record for a run. Mirrors the summary's numbers so
+    the parity trend is plotted from the same figures a reader sees in
+    qtest-parity-summary.md. ``commit`` and ``timestamp`` come from the caller
+    so this stays deterministic and testable, matching verify-allowlist.py."""
+    record = {
+        "timestamp": timestamp,
+        "flpdf_commit": commit,
+        "total": validation.total,
+        "ordinary_passes": run.summary.passes,
+        "expected_failures": run.summary.expected_failures,
+        "validation_errors": len(validation.errors),
+        "verdict": "FAIL" if validation.errors else "OK",
+    }
+    for state in sorted(STATES):
+        record[state] = validation.counts.get(state, 0)
+    return record
+
+
 def render_summary(
     run: RunResults,
     validation: Validation,
@@ -322,6 +347,22 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="append a bounded validation headline without identity lists",
     )
+    parser.add_argument(
+        "--metrics",
+        type=Path,
+        default=None,
+        help="write one JSONL time-series record for this run",
+    )
+    parser.add_argument(
+        "--commit",
+        default="",
+        help="flpdf SHA under test, recorded in --metrics",
+    )
+    parser.add_argument(
+        "--timestamp",
+        default="",
+        help="ISO-8601 timestamp recorded in --metrics",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -342,6 +383,13 @@ def main(argv: list[str] | None = None) -> int:
         headline = render_summary(run, validation, include_details=False)
         with args.step_summary.open("a", encoding="utf-8") as stream:
             stream.write(headline)
+    if args.metrics:
+        record = build_metrics(
+            run, validation, commit=args.commit, timestamp=args.timestamp
+        )
+        args.metrics.write_text(
+            json.dumps(record, sort_keys=True) + "\n", encoding="utf-8"
+        )
     return 1 if validation.errors else 0
 
 

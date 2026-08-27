@@ -47,6 +47,34 @@ class RunContractTest(unittest.TestCase):
             r'exit 2\s+fi',
         )
 
+    def test_parity_verifier_emits_its_own_metrics_record(self) -> None:
+        """The parity trend needs a time series of its own. verify-allowlist.py
+        owns qtest-metrics.jsonl; the parity numbers go to a separate file so
+        neither validator has to know about the other's schema."""
+        self.assertIn(
+            'parity_metrics="${live_dir}/qtest-parity-metrics.jsonl"', self.script
+        )
+        self.assertRegex(
+            self.script,
+            r'parity_args\+=\(\s*--metrics "\$\{parity_metrics\}"\s+'
+            r'--commit "\$\{FLPDF_COMMIT:-\}"\s+'
+            r'--timestamp ',
+        )
+
+    def test_parity_metrics_is_cleared_before_binary_preflight(self) -> None:
+        clear = self.script.index("rm -f")
+        binary_resolution = self.script.index('if [[ -z "${FLPDF_CLI_BIN:-}" ]]')
+        self.assertIn(
+            '"${parity_metrics}"', self.script[clear:binary_resolution]
+        )
+
+    def test_ci_uploads_the_parity_metrics_artifact(self) -> None:
+        self.assertRegex(
+            self.workflow,
+            r'(?s)- name: Upload qtest artifacts.*?'
+            r'survey/latest/qtest-parity-metrics\.jsonl',
+        )
+
     def test_runner_exposes_no_subset_selection_interface(self) -> None:
         self.assertNotIn("QTEST_TESTS", self.script)
 
@@ -506,6 +534,44 @@ class RunContractTest(unittest.TestCase):
             if line.strip() and not line.lstrip().startswith("#")
         }
         self.assertIn("survey/latest/", ignored)
+
+    @property
+    def publish(self) -> str:
+        return (_ROOT / "scripts" / "publish-metrics.sh").read_text(encoding="utf-8")
+
+    def test_publish_accepts_and_appends_the_parity_series(self) -> None:
+        """The parity trend needs its own history file on metrics-data, fed by
+        a second argument so the allowlist path is unchanged when it is absent."""
+        self.assertIn("parity_line=", self.publish)
+        self.assertIn("parity-metrics.jsonl", self.publish)
+
+    def test_publish_renders_both_charts_with_both_renderers(self) -> None:
+        """Four SVGs: each series rendered by vl-convert and by fulgur-chart."""
+        for svg in (
+            "trend.svg",
+            "trend-fulgur.svg",
+            "trend-parity.svg",
+            "trend-parity-fulgur.svg",
+        ):
+            self.assertIn(svg, self.publish, svg)
+        self.assertRegex(self.publish, r"--series\s+parity")
+
+    def test_publish_pins_chart_cli_version(self) -> None:
+        """The dogfood renderer stays pinned; an unpinned npx would pull
+        whatever is latest at render time into the nightly job."""
+        self.assertRegex(
+            self.publish, r'FULGUR_CHART_CLI_VERSION="[0-9]+\.[0-9]+\.[0-9]+"'
+        )
+        self.assertIn(
+            '"@fulgur-rs/chart-cli@${FULGUR_CHART_CLI_VERSION}"', self.publish
+        )
+
+    def test_ci_passes_the_parity_metrics_to_publish(self) -> None:
+        self.assertRegex(
+            self.workflow,
+            r"publish-metrics\.sh\s+artifacts/qtest-metrics\.jsonl\s+"
+            r"artifacts/qtest-parity-metrics\.jsonl",
+        )
 
     def test_ci_publishes_scheduled_metrics_after_qtest_failure(self) -> None:
         publish_metrics = self.workflow.split("  publish-metrics:", maxsplit=1)[1]
