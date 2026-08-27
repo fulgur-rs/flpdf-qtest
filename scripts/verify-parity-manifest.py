@@ -275,7 +275,7 @@ def validate_manifest(
 
 
 def build_metrics(
-    run: qtest_results.RunResults,
+    run: RunResults,
     validation: Validation,
     *,
     commit: str,
