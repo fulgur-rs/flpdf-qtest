@@ -141,10 +141,23 @@ python3 "${repo_root}/scripts/plot-metrics.py" \
     --output "${trust_dir}/trend.svg" \
     --spec-output "${trust_dir}/spec.json"
 if [[ ${parity_ok} -eq 1 ]]; then
+    # The parity states partition the in-scope total, so the canonical chart
+    # stacks them as an area: blocked draining into passing is the shape worth
+    # seeing, and four independent lines bury it.
     python3 "${repo_root}/scripts/plot-metrics.py" \
         --input "${trust_dir}/parity-metrics.jsonl" \
         --output "${trust_dir}/trend-parity.svg" \
         --spec-output "${trust_dir}/spec-parity.json" \
+        --series parity \
+        --mark area
+    # fulgur-chart 0.1.20 rejects the area mark outright ("未対応の mark:
+    # area"), so the dogfood chart gets a line spec of the same data. Feeding
+    # it the area spec would fail every night and freeze trend-parity-fulgur.svg
+    # at whatever it last rendered.
+    python3 "${repo_root}/scripts/plot-metrics.py" \
+        --input "${trust_dir}/parity-metrics.jsonl" \
+        --output /dev/null \
+        --spec-output "${trust_dir}/spec-parity-line.json" \
         --series parity
 fi
 
@@ -233,7 +246,7 @@ fulgur_parity_ok=0
 if command -v npx >/dev/null; then
     render_fulgur "${trust_dir}/spec.json" trend-fulgur.svg fulgur_ok
     if [[ ${parity_ok} -eq 1 ]]; then
-        render_fulgur "${trust_dir}/spec-parity.json" trend-parity-fulgur.svg fulgur_parity_ok
+        render_fulgur "${trust_dir}/spec-parity-line.json" trend-parity-fulgur.svg fulgur_parity_ok
     fi
 else
     echo "publish-metrics: npx not on PATH; skipping dogfood charts" >&2
@@ -302,6 +315,9 @@ fi
 if [[ -n "${parity_fulgur_blob}" ]]; then
     readme_text+="
 ## Parity ledger trend (fulgur-chart — dogfooding)
+
+Plotted as lines rather than the stacked area above: chart-cli \`${FULGUR_CHART_CLI_VERSION}\`
+does not implement the \`area\` mark yet. Same data, same series, different form.
 
 ![trend-parity-fulgur](trend-parity-fulgur.svg)
 "

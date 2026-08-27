@@ -184,6 +184,51 @@ class SeriesSelectionTest(unittest.TestCase):
         self.assertEqual(metrics, set(plot_metrics.PARITY_SERIES))
 
 
+class MarkSelectionTest(unittest.TestCase):
+    """The parity states partition the in-scope total, so a stacked area reads
+    their composition better than four independent lines. fulgur-chart 0.1.20
+    rejects `area` ("未対応の mark: area"), so --mark keeps both renderable."""
+
+    def test_defaults_to_line(self) -> None:
+        recs = plot_metrics.load_records(_tmp(_SAMPLE))
+        spec = plot_metrics.build_spec(recs)
+        self.assertEqual(spec["mark"]["type"], "line")
+        self.assertNotIn("stack", spec["encoding"]["y"])
+
+    def test_area_mark_stacks_and_orders_the_states(self) -> None:
+        recs = plot_metrics.load_records(_tmp(_PARITY_SAMPLE))
+        spec = plot_metrics.build_spec(
+            recs, series=plot_metrics.PARITY_SERIES, mark="area"
+        )
+        self.assertEqual(spec["mark"]["type"], "area")
+        self.assertEqual(spec["encoding"]["y"]["stack"], "zero")
+        # Without an explicit order the stack ordering is renderer-defined and
+        # can flip between runs, which would make the chart's history unreadable.
+        self.assertIn("order", spec["encoding"])
+
+    def test_area_mark_drops_the_point_overlay(self) -> None:
+        """point:True belongs to a line chart; on a filled area it just speckles
+        the bands."""
+        recs = plot_metrics.load_records(_tmp(_PARITY_SAMPLE))
+        spec = plot_metrics.build_spec(
+            recs, series=plot_metrics.PARITY_SERIES, mark="area"
+        )
+        self.assertNotIn("point", spec["mark"])
+
+    def test_main_accepts_mark_flag(self) -> None:
+        spec_out = _tmp("", suffix=".json")
+        rc = plot_metrics.main([
+            "--input", str(_tmp(_PARITY_SAMPLE)),
+            "--output", str(_tmp("", suffix=".svg")),
+            "--spec-output", str(spec_out),
+            "--series", "parity",
+            "--mark", "area",
+        ])
+        self.assertEqual(rc, 0)
+        spec = json.loads(spec_out.read_text(encoding="utf-8"))
+        self.assertEqual(spec["mark"]["type"], "area")
+
+
 @unittest.skipUnless(_HAS_VLC, "vl-convert-python not installed")
 class MainTest(unittest.TestCase):
     def test_main_writes_svg_file(self) -> None:

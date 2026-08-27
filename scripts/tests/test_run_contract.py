@@ -556,6 +556,13 @@ class RunContractTest(unittest.TestCase):
             self.assertIn(svg, self.publish, svg)
         self.assertRegex(self.publish, r"--series\s+parity")
 
+    def test_publish_renders_parity_as_area_and_fulgur_as_line(self) -> None:
+        """fulgur-chart 0.1.20 rejects `area` ("未対応の mark: area"), so the
+        dogfood chart keeps the line form while the canonical one stacks. Two
+        specs, not one, or the fulgur render fails every night."""
+        self.assertRegex(self.publish, r"--mark\s+area")
+        self.assertIn("spec-parity-line.json", self.publish)
+
     def test_publish_pins_chart_cli_version(self) -> None:
         """The dogfood renderer stays pinned; an unpinned npx would pull
         whatever is latest at render time into the nightly job."""
