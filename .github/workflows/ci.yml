@@ -114,6 +114,7 @@ jobs:
             survey/latest/qtest-summary.md
             survey/latest/qtest-metrics.jsonl
             survey/latest/qtest-parity-summary.md
+            survey/latest/qtest-parity-metrics.jsonl
           if-no-files-found: ignore
 
   # Nightly only: append the run's metrics to the metrics-data history branch

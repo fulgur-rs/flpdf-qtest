@@ -973,6 +973,66 @@ class SummaryAndMainTest(unittest.TestCase):
             self.assertIn(f"- {state}:", full.read_text())
         self.assertIn("**Verdict: OK**", step.read_text())
 
+    def test_metrics_records_state_counts_for_the_run(self) -> None:
+        """--metrics writes one JSONL record so the parity trend can be plotted
+        over time, the same way verify-allowlist.py feeds the allowlist trend."""
+        result = _result("arg-parsing", 1, "required argument", Outcome.PASS)
+        log, xml = _paired_artifacts([result])
+        manifest = _tmp(_manifest_text([_entry()]))
+        metrics = _tmp("", suffix=".jsonl")
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = verify_manifest.main(
+                [
+                    str(log),
+                    str(xml),
+                    str(manifest),
+                    "--metrics",
+                    str(metrics),
+                    "--commit",
+                    "deadbeef",
+                    "--timestamp",
+                    "2026-08-27T00:00:00Z",
+                ]
+            )
+
+        self.assertEqual(rc, 0)
+        record = json.loads(metrics.read_text(encoding="utf-8").strip())
+        self.assertEqual(record["flpdf_commit"], "deadbeef")
+        self.assertEqual(record["timestamp"], "2026-08-27T00:00:00Z")
+        self.assertEqual(record["total"], 1)
+        self.assertEqual(record["passing"], 1)
+        self.assertEqual(record["validation_errors"], 0)
+        self.assertEqual(record["verdict"], "OK")
+        for state in verify_manifest.STATES:
+            self.assertIn(state, record)
+
+    def test_metrics_verdict_is_fail_when_validation_errors_exist(self) -> None:
+        result = _result("arg-parsing", 1, "required argument", Outcome.PASS)
+        log, xml = _paired_artifacts([result])
+        manifest = _tmp("")
+        metrics = _tmp("", suffix=".jsonl")
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = verify_manifest.main(
+                [
+                    str(log),
+                    str(xml),
+                    str(manifest),
+                    "--metrics",
+                    str(metrics),
+                    "--commit",
+                    "",
+                    "--timestamp",
+                    "2026-08-27T00:00:00Z",
+                ]
+            )
+
+        self.assertEqual(rc, 1)
+        record = json.loads(metrics.read_text(encoding="utf-8").strip())
+        self.assertEqual(record["verdict"], "FAIL")
+        self.assertGreater(record["validation_errors"], 0)
+
     def test_validation_error_exits_one_and_step_omits_identity_list(self) -> None:
         result = _result(
             "arg-parsing", 1, "required argument", Outcome.PASS

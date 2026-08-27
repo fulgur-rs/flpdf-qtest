@@ -47,6 +47,34 @@ class RunContractTest(unittest.TestCase):
             r'exit 2\s+fi',
         )
 
+    def test_parity_verifier_emits_its_own_metrics_record(self) -> None:
+        """The parity trend needs a time series of its own. verify-allowlist.py
+        owns qtest-metrics.jsonl; the parity numbers go to a separate file so
+        neither validator has to know about the other's schema."""
+        self.assertIn(
+            'parity_metrics="${live_dir}/qtest-parity-metrics.jsonl"', self.script
+        )
+        self.assertRegex(
+            self.script,
+            r'parity_args\+=\(\s*--metrics "\$\{parity_metrics\}"\s+'
+            r'--commit "\$\{FLPDF_COMMIT:-\}"\s+'
+            r'--timestamp ',
+        )
+
+    def test_parity_metrics_is_cleared_before_binary_preflight(self) -> None:
+        clear = self.script.index("rm -f")
+        binary_resolution = self.script.index('if [[ -z "${FLPDF_CLI_BIN:-}" ]]')
+        self.assertIn(
+            '"${parity_metrics}"', self.script[clear:binary_resolution]
+        )
+
+    def test_ci_uploads_the_parity_metrics_artifact(self) -> None:
+        self.assertRegex(
+            self.workflow,
+            r'(?s)- name: Upload qtest artifacts.*?'
+            r'survey/latest/qtest-parity-metrics\.jsonl',
+        )
+
     def test_runner_exposes_no_subset_selection_interface(self) -> None:
         self.assertNotIn("QTEST_TESTS", self.script)
 
