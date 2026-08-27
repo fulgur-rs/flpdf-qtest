@@ -215,6 +215,26 @@ class MarkSelectionTest(unittest.TestCase):
         )
         self.assertNotIn("point", spec["mark"])
 
+    def test_area_is_rejected_for_series_that_share_no_total(self) -> None:
+        """Stacking independent counts asserts a relationship that isn't there.
+        The allowlist metrics do not partition anything, so the combination is
+        refused rather than silently drawn."""
+        with self.assertRaises(ValueError):
+            plot_metrics.build_spec(
+                plot_metrics.load_records(_tmp(_SAMPLE)),
+                series=plot_metrics.ALLOWLIST_SERIES,
+                mark="area",
+            )
+
+    def test_main_exits_nonzero_for_allowlist_area(self) -> None:
+        rc = plot_metrics.main([
+            "--input", str(_tmp(_SAMPLE)),
+            "--output", str(_tmp("", suffix=".svg")),
+            "--series", "allowlist",
+            "--mark", "area",
+        ])
+        self.assertNotEqual(rc, 0)
+
     def test_main_accepts_mark_flag(self) -> None:
         spec_out = _tmp("", suffix=".json")
         rc = plot_metrics.main([

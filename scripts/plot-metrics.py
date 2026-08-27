@@ -34,6 +34,12 @@ ALLOWLIST_SERIES = ("regressions", "missing", "candidates", "allowlist")
 PARITY_SERIES = ("passing", "blocked", "failing", "applicable")
 
 _SERIES_BY_NAME = {"allowlist": ALLOWLIST_SERIES, "parity": PARITY_SERIES}
+
+# Only series whose members partition one total may be stacked. The parity
+# states do (every in-scope subtest is in exactly one of them); the allowlist
+# metrics are independent counts, and stacking them would assert a
+# relationship that does not exist.
+_STACKABLE = frozenset({PARITY_SERIES})
 _TITLE_BY_NAME = {
     "allowlist": "qtest nightly trend",
     "parity": "qtest parity trend",
@@ -77,6 +83,12 @@ def build_spec(
     total, so a stacked area reads their composition -- blocked draining into
     passing -- better than four independent lines. The allowlist metrics are
     independent counts that share no total, so they stay lines."""
+    if mark == "area" and tuple(series) not in _STACKABLE:
+        raise ValueError(
+            f"area requires a series that partitions a total; {tuple(series)} "
+            "are independent counts — use --mark line"
+        )
+
     values: list[dict] = []
     for r in records:
         timestamp = r.get("timestamp")
@@ -187,7 +199,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     series = _SERIES_BY_NAME[args.series]
     title = args.title or _TITLE_BY_NAME[args.series]
-    spec = build_spec(records, series=series, title=title, mark=args.mark)
+    try:
+        spec = build_spec(records, series=series, title=title, mark=args.mark)
+    except ValueError as e:
+        print(f"plot-metrics: {e}", file=sys.stderr)
+        return 2
     if args.spec_output is not None:
         args.spec_output.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     svg = render_svg(spec)
