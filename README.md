@@ -14,3 +14,16 @@ Rendered from the same Vega-Lite spec via [fulgur-chart](https://github.com/fulg
 development; discrepancies are expected and are the point.
 
 ![trend-fulgur](trend-fulgur.svg)
+
+## Parity ledger trend (Vega-Lite via vl-convert)
+
+Ledger state counts from `parity-metrics.jsonl`. `passing` should climb while
+`blocked` and `failing` drain into it. `excluded` is omitted — it is a scope
+decision, not progress. The series starts 2026-07-30, when the parity manifest
+was introduced; nights before that have no parity data to plot.
+
+![trend-parity](trend-parity.svg)
+
+## Parity ledger trend (fulgur-chart — dogfooding)
+
+![trend-parity-fulgur](trend-parity-fulgur.svg)
