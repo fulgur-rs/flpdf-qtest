@@ -34,6 +34,12 @@ ALLOWLIST_SERIES = ("regressions", "missing", "candidates", "allowlist")
 PARITY_SERIES = ("passing", "blocked", "failing", "applicable")
 
 _SERIES_BY_NAME = {"allowlist": ALLOWLIST_SERIES, "parity": PARITY_SERIES}
+
+# Only series whose members partition one total may be stacked. The parity
+# states do (every in-scope subtest is in exactly one of them); the allowlist
+# metrics are independent counts, and stacking them would assert a
+# relationship that does not exist.
+_STACKABLE = frozenset({PARITY_SERIES})
 _TITLE_BY_NAME = {
     "allowlist": "qtest nightly trend",
     "parity": "qtest parity trend",
@@ -64,13 +70,25 @@ def build_spec(
     records: list[dict],
     series: tuple[str, ...] = ALLOWLIST_SERIES,
     title: str = "qtest nightly trend",
+    mark: str = "line",
 ) -> dict:
     """Build a Vega-Lite spec: a multi-series line chart of the metrics over
     time. Records are folded into long form (timestamp, metric, value) so each
     series gets its own colored line.
 
     ``series`` selects which fields to plot, so one renderer serves both the
-    allowlist trend and the parity trend rather than duplicating the spec."""
+    allowlist trend and the parity trend rather than duplicating the spec.
+
+    ``mark`` is "line" or "area". The parity states partition the in-scope
+    total, so a stacked area reads their composition -- blocked draining into
+    passing -- better than four independent lines. The allowlist metrics are
+    independent counts that share no total, so they stay lines."""
+    if mark == "area" and tuple(series) not in _STACKABLE:
+        raise ValueError(
+            f"area requires a series that partitions a total; {tuple(series)} "
+            "are independent counts — use --mark line"
+        )
+
     values: list[dict] = []
     for r in records:
         timestamp = r.get("timestamp")
@@ -92,7 +110,13 @@ def build_spec(
         "height": 320,
         "background": "white",
         "data": {"values": values},
-        "mark": {"type": "line", "point": True, "interpolate": "monotone"},
+        # point:True belongs to a line chart; on a filled area it just speckles
+        # the bands.
+        "mark": (
+            {"type": "area", "interpolate": "monotone"}
+            if mark == "area"
+            else {"type": "line", "point": True, "interpolate": "monotone"}
+        ),
         "encoding": {
             "x": {
                 "field": "timestamp",
@@ -103,6 +127,9 @@ def build_spec(
                 "field": "value",
                 "type": "quantitative",
                 "title": "subtests",
+                # Vega-Lite stacks quantitative y by default for some marks;
+                # be explicit either way so the two charts cannot drift.
+                **({"stack": "zero"} if mark == "area" else {}),
             },
             "color": {
                 "field": "metric",
@@ -110,6 +137,14 @@ def build_spec(
                 "title": "metric",
                 "scale": {"scheme": "tableau10"},
             },
+            # Without an explicit order the stack ordering is renderer-defined
+            # and can flip between runs, which would make the chart's history
+            # unreadable.
+            **(
+                {"order": {"field": "metric", "type": "nominal"}}
+                if mark == "area"
+                else {}
+            ),
         },
         "config": {
             "view": {"stroke": None},
@@ -136,6 +171,12 @@ def main(argv: list[str] | None = None) -> int:
         help="which metric family to plot (default: allowlist)",
     )
     ap.add_argument(
+        "--mark",
+        choices=("line", "area"),
+        default="line",
+        help="line, or a stacked area for series that partition a total",
+    )
+    ap.add_argument(
         "--title",
         default=None,
         help="chart title (default: derived from --series)",
@@ -158,7 +199,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     series = _SERIES_BY_NAME[args.series]
     title = args.title or _TITLE_BY_NAME[args.series]
-    spec = build_spec(records, series=series, title=title)
+    try:
+        spec = build_spec(records, series=series, title=title, mark=args.mark)
+    except ValueError as e:
+        print(f"plot-metrics: {e}", file=sys.stderr)
+        return 2
     if args.spec_output is not None:
         args.spec_output.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     svg = render_svg(spec)
