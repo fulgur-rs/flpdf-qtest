@@ -26,4 +26,7 @@ was introduced; nights before that have no parity data to plot.
 
 ## Parity ledger trend (fulgur-chart — dogfooding)
 
+Plotted as lines rather than the stacked area above: chart-cli `0.1.20`
+does not implement the `area` mark yet. Same data, same series, different form.
+
 ![trend-parity-fulgur](trend-parity-fulgur.svg)
