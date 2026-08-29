@@ -97,6 +97,7 @@ qpdf-json:json-output with file
 #  red there; it is excluded as a baseline.)
 decode-parameters:decode parameters empty list
 decode-parameters:stream with indirect decode parms
+decode-levels
 encryption:create reference qdf
 inline-images:complex inline image parsing
 linearization:linearized and modified
