@@ -13,7 +13,7 @@ require TestDriver;
 cleanup();
 
 my $td = new TestDriver('job-json-transformations');
-my $n_tests = 11;
+my $n_tests = 13;
 
 open(F, ">job-json-split.json") or die;
 print F <<'JSON';
@@ -65,6 +65,17 @@ print F <<'JSON';
   "inputFile": "boxes.pdf",
   "outputFile": "job-json-flatten-rotation.pdf",
   "flattenRotation": "",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-generate-appearances.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "need-appearances.pdf",
+  "outputFile": "job-json-generate-appearances.pdf",
+  "generateAppearances": "",
   "staticId": ""
 }
 JSON
@@ -127,6 +138,17 @@ $td->runtest(
 $td->runtest(
     "job JSON flattenRotation output",
     {$td->COMMAND => "qpdf --show-object=4 job-json-flatten-rotation.pdf | grep -q '/MediaBox \\[ 0 0 792 612 \\]' && ! qpdf --show-object=4 job-json-flatten-rotation.pdf | grep -q '/Rotate'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON generateAppearances",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-generate-appearances.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON generateAppearances output",
+    {$td->COMMAND => "qpdf --json=2 --json-key=acroform job-json-generate-appearances.pdf | grep -q '\"needappearances\": false'"},
     {$td->STRING => "", $td->EXIT_STATUS => 0},
     $td->NORMALIZE_NEWLINES);
 
