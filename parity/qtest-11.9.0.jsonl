@@ -2444,7 +2444,7 @@
 {"id":"qpdfjob 8","suite":"qpdfjob","category":"qpdfjob","ordinal":8,"description":"QPDFJob bad json: schema-error","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 9","suite":"qpdfjob","category":"qpdfjob","ordinal":9,"description":"QPDFJob bad json: json-error","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 10","suite":"qpdfjob","category":"qpdfjob","ordinal":10,"description":"QPDFJob good json: choice-match","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"qpdfjob 11","suite":"qpdfjob","category":"qpdfjob","ordinal":11,"description":"check good json choice-match output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"qpdfjob 11","suite":"qpdfjob","category":"qpdfjob","ordinal":11,"description":"check good json choice-match output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 12","suite":"qpdfjob","category":"qpdfjob","ordinal":12,"description":"QPDFJob good json: input-file-password","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 13","suite":"qpdfjob","category":"qpdfjob","ordinal":13,"description":"check good json input-file-password output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 14","suite":"qpdfjob","category":"qpdfjob","ordinal":14,"description":"QPDFJob good json: empty-input","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
