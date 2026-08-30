@@ -72,6 +72,8 @@ job-json-transformations:job JSON removeRestrictions
 job-json-transformations:job JSON removeRestrictions output
 job-json-transformations:job JSON coalesceContents
 job-json-transformations:job JSON coalesceContents output
+job-json-transformations:job JSON flattenRotation
+job-json-transformations:job JSON flattenRotation output
 
 # Minimal promote batch from full survey at flpdf 23e71d9 (2026-05-27).
 # Both entries have been passing in CI since at least flpdf 91080c7

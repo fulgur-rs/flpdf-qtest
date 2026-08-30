@@ -13,7 +13,7 @@ require TestDriver;
 cleanup();
 
 my $td = new TestDriver('job-json-transformations');
-my $n_tests = 9;
+my $n_tests = 11;
 
 open(F, ">job-json-split.json") or die;
 print F <<'JSON';
@@ -54,6 +54,17 @@ print F <<'JSON';
   "inputFile": "coalesce.pdf",
   "outputFile": "job-json-coalesce.pdf",
   "coalesceContents": "",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-flatten-rotation.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "boxes.pdf",
+  "outputFile": "job-json-flatten-rotation.pdf",
+  "flattenRotation": "",
   "staticId": ""
 }
 JSON
@@ -105,6 +116,17 @@ $td->runtest(
 $td->runtest(
     "job JSON coalesceContents output",
     {$td->COMMAND => "qpdf --show-object=3 job-json-coalesce.pdf | grep -Eq '/Contents [0-9]+ 0 R'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON flattenRotation",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-flatten-rotation.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON flattenRotation output",
+    {$td->COMMAND => "qpdf --show-object=4 job-json-flatten-rotation.pdf | grep -q '/MediaBox \\[ 0 0 792 612 \\]' && ! qpdf --show-object=4 job-json-flatten-rotation.pdf | grep -q '/Rotate'"},
     {$td->STRING => "", $td->EXIT_STATUS => 0},
     $td->NORMALIZE_NEWLINES);
 
