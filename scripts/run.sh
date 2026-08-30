@@ -50,6 +50,10 @@
 #                           Absolute path to test_parsedoffset, the qpdf
 #                           metadata helper used by parsed-offset.test. Same
 #                           resolution order as FLPDF_CLI_BIN.
+#   FLPDF_TEST_LARGE_FILE_BIN
+#                           Absolute path to flpdf-test-large-file, the Rust
+#                           port of qpdf/test_large_file.cc. Same resolution
+#                           order as FLPDF_CLI_BIN.
 #
 # Optional env:
 #   FLPDF_DIR      Absolute path to a flpdf checkout. If set and any of
@@ -60,8 +64,9 @@
 #                  FLPDF_TEST_PDF_DOC_ENCODING_BIN /
 #                  FLPDF_TEST_PDF_UNICODE_BIN /
 #                  FLPDF_TEST_UNICODE_FILENAMES_BIN /
-#                  FLPDF_TEST_XREF_BIN / FLPDF_TEST_PARSED_OFFSET_BIN is not,
-#                  the script runs one release build selecting all ten
+#                  FLPDF_TEST_XREF_BIN / FLPDF_TEST_PARSED_OFFSET_BIN /
+#                  FLPDF_TEST_LARGE_FILE_BIN is not, the script runs one
+#                  release build selecting all eleven
 #                  binaries there and always
 #                  uses those freshly-built binaries.
 #   QTEST_FULL     When "1", run every *.test in vendor/qpdf-qtest/.
@@ -246,9 +251,21 @@ if [[ -z "${FLPDF_TEST_PARSED_OFFSET_BIN:-}" ]]; then
     fi
 fi
 
+if [[ -z "${FLPDF_TEST_LARGE_FILE_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_LARGE_FILE_BIN="${FLPDF_DIR}/target/release/flpdf-test-large-file"
+    elif [[ -x "${repo_root}/flpdf/target/release/flpdf-test-large-file" ]]; then
+        FLPDF_TEST_LARGE_FILE_BIN="${repo_root}/flpdf/target/release/flpdf-test-large-file"
+    else
+        echo "run.sh: cannot locate flpdf-test-large-file (set FLPDF_TEST_LARGE_FILE_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
+fi
+
 if [[ ${need_build} -eq 1 ]]; then
-    echo "==> Building flpdf and ten qtest helper binaries in ${FLPDF_DIR}"
-    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset )
+    echo "==> Building flpdf and eleven qtest helper binaries in ${FLPDF_DIR}"
+    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file )
 fi
 
 export FLPDF_CLI_BIN
@@ -261,6 +278,7 @@ export FLPDF_TEST_PDF_UNICODE_BIN
 export FLPDF_TEST_UNICODE_FILENAMES_BIN
 export FLPDF_TEST_XREF_BIN
 export FLPDF_TEST_PARSED_OFFSET_BIN
+export FLPDF_TEST_LARGE_FILE_BIN
 
 for bin in \
     "${FLPDF_CLI_BIN}" \
@@ -272,7 +290,8 @@ for bin in \
     "${FLPDF_TEST_PDF_UNICODE_BIN}" \
     "${FLPDF_TEST_UNICODE_FILENAMES_BIN}" \
     "${FLPDF_TEST_XREF_BIN}" \
-    "${FLPDF_TEST_PARSED_OFFSET_BIN}"; do
+    "${FLPDF_TEST_PARSED_OFFSET_BIN}" \
+    "${FLPDF_TEST_LARGE_FILE_BIN}"; do
     if [[ ! -x "${bin}" ]]; then
         echo "run.sh: ${bin} is not executable" >&2
         exit 2

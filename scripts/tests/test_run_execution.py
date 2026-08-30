@@ -94,6 +94,8 @@ class RunExecutionTest(unittest.TestCase):
                     ($ENV{"FLPDF_TEST_XREF_BIN"} // ""),
                     "\n",
                     ($ENV{"FLPDF_TEST_PARSED_OFFSET_BIN"} // ""),
+                    "\n",
+                    ($ENV{"FLPDF_TEST_LARGE_FILE_BIN"} // ""),
                     "\n";
                 close $helper_env;
                 my $datadir = "";
@@ -229,6 +231,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_UNICODE_FILENAMES_BIN": str(self.fake_binary),
                 "FLPDF_TEST_XREF_BIN": str(self.fake_binary),
                 "FLPDF_TEST_PARSED_OFFSET_BIN": str(self.fake_binary),
+                "FLPDF_TEST_LARGE_FILE_BIN": str(self.fake_binary),
                 "FAKE_QTEST_MODE": mode,
             }
         )
@@ -330,7 +333,7 @@ class RunExecutionTest(unittest.TestCase):
             "printf '%s\\n' \"$@\" > \"$FLPDF_DIR/cargo-args.txt\"\n"
             "for name in flpdf flpdf-test-compare flpdf-test-driver qpdfjob-ctest qpdf-ctest "
                 "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode "
-                "flpdf-test-unicode-filenames test_xref test_parsedoffset; do\n"
+                "flpdf-test-unicode-filenames test_xref test_parsedoffset flpdf-test-large-file; do\n"
             "  printf '#!/usr/bin/env sh\\nexit 0\\n' "
             "> \"$FLPDF_DIR/target/release/$name\"\n"
             "  chmod +x \"$FLPDF_DIR/target/release/$name\"\n"
@@ -353,6 +356,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_UNICODE_FILENAMES_BIN": None,
                 "FLPDF_TEST_XREF_BIN": None,
                 "FLPDF_TEST_PARSED_OFFSET_BIN": None,
+                "FLPDF_TEST_LARGE_FILE_BIN": None,
                 "FLPDF_DIR": str(flpdf_dir),
                 "PATH": f"{fake_tools}:{os.environ['PATH']}",
             },
@@ -387,6 +391,8 @@ class RunExecutionTest(unittest.TestCase):
                 "test_xref",
                 "--bin",
                 "test_parsedoffset",
+                "--bin",
+                "flpdf-test-large-file",
             ],
         )
         self.assertEqual(
@@ -401,6 +407,7 @@ class RunExecutionTest(unittest.TestCase):
                 str(release_dir / "flpdf-test-unicode-filenames"),
                 str(release_dir / "test_xref"),
                 str(release_dir / "test_parsedoffset"),
+                str(release_dir / "flpdf-test-large-file"),
             ],
         )
 

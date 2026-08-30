@@ -80,7 +80,7 @@ jobs:
       # harness consumes, while flpdf's crate layout is free to change.
       - name: Build flpdf and qtest helper binaries
         working-directory: flpdf
-        run: cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset
+        run: cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file
 
       - name: Run qtest acceptance suite
         env:
@@ -94,6 +94,7 @@ jobs:
           FLPDF_TEST_UNICODE_FILENAMES_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-unicode-filenames
           FLPDF_TEST_XREF_BIN: ${{ github.workspace }}/flpdf/target/release/test_xref
           FLPDF_TEST_PARSED_OFFSET_BIN: ${{ github.workspace }}/flpdf/target/release/test_parsedoffset
+          FLPDF_TEST_LARGE_FILE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-large-file
           FLPDF_COMMIT: ${{ steps.flpdf_sha.outputs.sha }}
           QTEST_FULL: "1"
         run: ./scripts/run.sh
