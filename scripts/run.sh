@@ -322,6 +322,18 @@ if ! cp -a --reflink=auto "${qtest_source}" "${qtest_datadir}"; then
     exit 2
 fi
 
+# Local parity suites are maintained outside the vendored qpdf corpus. Copy
+# them into the same disposable datadir so they exercise the same qtest-driver
+# and shim boundary without patching upstream files. Their stems participate in
+# the normal full-run manifest and allowlist validation below.
+local_qtest_source="${repo_root}/tests/qpdf"
+if [[ -d "${local_qtest_source}" ]]; then
+    if ! cp -a --reflink=auto "${local_qtest_source}/." "${qtest_datadir}"; then
+        echo "run.sh: failed to overlay local qtest suites from ${local_qtest_source}" >&2
+        exit 2
+    fi
+fi
+
 # --- prepare shim PATH -------------------------------------------------------
 #
 # Copy every executable in shim/ — not just qpdf — so any qpdf-side helper

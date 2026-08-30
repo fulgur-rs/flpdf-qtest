@@ -1,0 +1,90 @@
+#!/usr/bin/env perl
+require 5.008;
+use warnings;
+use strict;
+
+unshift(@INC, '.');
+require qpdf_test_helpers;
+
+chdir("qpdf") or die "chdir testdir failed: $!\n";
+
+require TestDriver;
+
+cleanup();
+
+my $td = new TestDriver('job-json-transformations');
+my $n_tests = 7;
+
+open(F, ">job-json-split.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "minimal.pdf",
+  "outputFile": "job-json-split.pdf",
+  "splitPages": "1",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-rotate.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "minimal.pdf",
+  "outputFile": "job-json-rotate.pdf",
+  "rotate": "90",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-remove-restrictions.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "minimal-signed-restricted.pdf",
+  "outputFile": "job-json-remove-restrictions.pdf",
+  "removeRestrictions": "",
+  "staticId": ""
+}
+JSON
+close(F);
+
+$td->runtest(
+    "job JSON splitPages",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-split.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON splitPages output naming",
+    {$td->COMMAND => "test -f job-json-split-1.pdf && test ! -e job-json-split.pdf"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON splitPages output",
+    {$td->COMMAND => "qpdf --show-object=3 job-json-split-1.pdf >/dev/null"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON rotate",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-rotate.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON rotate output",
+    {$td->COMMAND => "qpdf --show-object=3 job-json-rotate.pdf | grep -q '/Rotate 90'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON removeRestrictions",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-remove-restrictions.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON removeRestrictions output",
+    {$td->COMMAND => "qpdf --show-object=1 job-json-remove-restrictions.pdf | grep -q '/Fields \\[ \\]' && qpdf --show-object=1 job-json-remove-restrictions.pdf | grep -q '/SigFlags 0'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+cleanup();
+$td->report($n_tests);

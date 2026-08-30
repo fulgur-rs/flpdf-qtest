@@ -61,6 +61,16 @@ split-pages:split pages %d at beginning
 rotate-pages:page rotation
 split-pages:split pages pdf extension
 
+# Job JSON page-transform slice (flpdf-egzr.8.10.1), verified against qpdf
+# 11.9.0 source/probes and a same-run qtest artifact pair.
+job-json-transformations:job JSON splitPages
+job-json-transformations:job JSON splitPages output naming
+job-json-transformations:job JSON splitPages output
+job-json-transformations:job JSON rotate
+job-json-transformations:job JSON rotate output
+job-json-transformations:job JSON removeRestrictions
+job-json-transformations:job JSON removeRestrictions output
+
 # Minimal promote batch from full survey at flpdf 23e71d9 (2026-05-27).
 # Both entries have been passing in CI since at least flpdf 91080c7
 # (2026-05-19) and exercise flpdf via the qpdf shim:
