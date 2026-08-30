@@ -761,7 +761,7 @@
 {"id":"deterministic-id 18","suite":"deterministic-id","category":"deterministic-id","ordinal":18,"description":"deterministic ID (C API)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"deterministic-id 19","suite":"deterministic-id","category":"deterministic-id","ordinal":19,"description":"compare files","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"disable-filter-on-write 1","suite":"disable-filter-on-write","category":"disable-filter-on-write","ordinal":1,"description":"no filter on write","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"disable-filter-on-write 2","suite":"disable-filter-on-write","category":"disable-filter-on-write","ordinal":2,"description":"check output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"disable-filter-on-write 2","suite":"disable-filter-on-write","category":"disable-filter-on-write","ordinal":2,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 1","suite":"encryption","category":"encryption","ordinal":1,"description":"encrypted file","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 2","suite":"encryption","category":"encryption","ordinal":2,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 3","suite":"encryption","category":"encryption","ordinal":3,"description":"recheck encrypted file","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -2444,7 +2444,7 @@
 {"id":"qpdfjob 8","suite":"qpdfjob","category":"qpdfjob","ordinal":8,"description":"QPDFJob bad json: schema-error","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 9","suite":"qpdfjob","category":"qpdfjob","ordinal":9,"description":"QPDFJob bad json: json-error","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 10","suite":"qpdfjob","category":"qpdfjob","ordinal":10,"description":"QPDFJob good json: choice-match","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"qpdfjob 11","suite":"qpdfjob","category":"qpdfjob","ordinal":11,"description":"check good json choice-match output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"qpdfjob 11","suite":"qpdfjob","category":"qpdfjob","ordinal":11,"description":"check good json choice-match output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 12","suite":"qpdfjob","category":"qpdfjob","ordinal":12,"description":"QPDFJob good json: input-file-password","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 13","suite":"qpdfjob","category":"qpdfjob","ordinal":13,"description":"check good json input-file-password output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 14","suite":"qpdfjob","category":"qpdfjob","ordinal":14,"description":"QPDFJob good json: empty-input","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}

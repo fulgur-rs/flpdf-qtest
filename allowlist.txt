@@ -219,7 +219,7 @@ parsed-offset:parsed offset with object streams
 # candidates that went NEW in the 2026-08-15 survey (flpdf 88ef9efe,
 # "scaffold test_driver test_2..test_98 (#839)"; see FINDINGS-coverage-
 # check-20260815-e2937212.md), now at their 3rd clean build (criterion 2
-# clear). Fifty-nine subtests promoted here, verified against ALL THREE
+# clear). Sixty subtests promoted here, verified against ALL THREE
 # criteria:
 #   1. name uniqueness — (category, description) match count == 1 against
 #      harness.log.fullsurvey-10a058f3 (computed programmatically, not by
@@ -239,7 +239,7 @@ parsed-offset:parsed offset with object streams
 #      immediately-preceding shim-routed subtest in the same .test (same
 #      pattern as the already-allowlisted precheck-streams:check output).
 # CRITICAL EXTRA FILTER applied on top of the three criteria: five of the
-# 64 name-unique candidates invoke `test_driver N -` (stdin `-`), which is
+# 65 name-unique candidates invoke `test_driver N -` (stdin `-`), which is
 # the exact CI-environment-dependent failure mode from PR #33 (non-
 # interactive shell can't open `-` as a file) — cross-referenced against
 # parity/qtest-11.9.0.jsonl by id "<suite> <ordinal>" and excluded because
@@ -268,6 +268,7 @@ copy-foreign-objects:indirect filters
 custom-pipeline:check output
 custom-pipeline:output to custom pipeline
 disable-filter-on-write:no filter on write
+disable-filter-on-write:check output
 encryption:copy encryption parameters
 encryption:set encryption before set filename
 final-version:check final version

@@ -80,7 +80,10 @@ jobs:
       # harness consumes, while flpdf's crate layout is free to change.
       - name: Build flpdf and qtest helper binaries
         working-directory: flpdf
-        run: cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file
+        # qtest performs strict file comparisons against qpdf 11.9.0. Use
+        # flpdf's opt-in classic libz backend; production defaults remain
+        # pure-Rust miniz_oxide.
+        run: cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file
 
       - name: Run qtest acceptance suite
         env:
