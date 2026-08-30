@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#
+# shim/test_large_file — route qpdf's large-file helper name to the Rust
+# qpdf/test_large_file.cc port in flpdf-qtest-tools.
+#
+# Required env:
+#   FLPDF_TEST_LARGE_FILE_BIN — absolute path to flpdf-test-large-file.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_LARGE_FILE_BIN:-}" ]]; then
+    echo "shim/test_large_file: FLPDF_TEST_LARGE_FILE_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_LARGE_FILE_BIN}" ]]; then
+    echo "shim/test_large_file: FLPDF_TEST_LARGE_FILE_BIN=${FLPDF_TEST_LARGE_FILE_BIN} is not executable" >&2
+    exit 127
+fi
+
+exec -a test_large_file "${FLPDF_TEST_LARGE_FILE_BIN}" "$@"

@@ -53,6 +53,7 @@ class MetadataShimTest(unittest.TestCase):
         for shim_name, variable in (
             ("test_xref", "FLPDF_TEST_XREF_BIN"),
             ("test_parsedoffset", "FLPDF_TEST_PARSED_OFFSET_BIN"),
+            ("test_large_file", "FLPDF_TEST_LARGE_FILE_BIN"),
         ):
             with self.subTest(shim=shim_name):
                 completed = self._run(shim_name, variable)
@@ -64,6 +65,7 @@ class MetadataShimTest(unittest.TestCase):
         for shim_name, variable in (
             ("test_xref", "FLPDF_TEST_XREF_BIN"),
             ("test_parsedoffset", "FLPDF_TEST_PARSED_OFFSET_BIN"),
+            ("test_large_file", "FLPDF_TEST_LARGE_FILE_BIN"),
         ):
             with self.subTest(shim=shim_name):
                 completed = self._run(shim_name, variable, configured=False)
