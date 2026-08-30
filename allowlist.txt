@@ -268,6 +268,7 @@ copy-foreign-objects:indirect filters
 custom-pipeline:check output
 custom-pipeline:output to custom pipeline
 disable-filter-on-write:no filter on write
+disable-filter-on-write:check output
 encryption:copy encryption parameters
 encryption:set encryption before set filename
 final-version:check final version

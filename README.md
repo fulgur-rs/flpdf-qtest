@@ -76,7 +76,8 @@ XML from different runs: doing so is rejected as an inconsistent result set.
 # Build all eleven binaries the harness needs. Select them by binary name so an
 # flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
-cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver \
+cargo build --release --features qpdf-zlib-compat \
+  --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver \
   --bin qpdfjob-ctest --bin qpdf-ctest \
   --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode \
   --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset \
@@ -98,6 +99,11 @@ FLPDF_TEST_LARGE_FILE_BIN=/path/to/flpdf/target/release/flpdf-test-large-file \
 QTEST_FULL=1 \
   ./scripts/run.sh
 ```
+
+The qtest corpus includes strict file comparisons of re-filtered streams.
+`qpdf-zlib-compat` selects the classic libz backend used by the pinned qpdf
+11.9.0 oracle; ordinary flpdf production builds remain on the default
+pure-Rust backend.
 
 A full run leaves `harness.log`, `qtest-results.xml`, and `TEST-qtest.xml` in
 `survey/latest/`. Keep `harness.log` and `qtest-results.xml` together when

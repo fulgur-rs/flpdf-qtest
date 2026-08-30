@@ -265,7 +265,10 @@ fi
 
 if [[ ${need_build} -eq 1 ]]; then
     echo "==> Building flpdf and eleven qtest helper binaries in ${FLPDF_DIR}"
-    ( cd "${FLPDF_DIR}" && cargo build --release --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file )
+    # qtest compares re-filtered stream files byte-for-byte with qpdf 11.9.0.
+    # Use flpdf's opt-in classic libz backend for that strict oracle boundary;
+    # ordinary flpdf production builds keep the default pure-Rust backend.
+    ( cd "${FLPDF_DIR}" && cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file )
 fi
 
 export FLPDF_CLI_BIN

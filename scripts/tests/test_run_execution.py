@@ -371,6 +371,8 @@ class RunExecutionTest(unittest.TestCase):
             [
                 "build",
                 "--release",
+                "--features",
+                "qpdf-zlib-compat",
                 "--bin",
                 "flpdf",
                 "--bin",
