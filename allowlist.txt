@@ -117,6 +117,10 @@ qpdf-json:json-output with file
 decode-parameters:decode parameters empty list
 decode-parameters:stream with indirect decode parms
 decode-levels
+
+# Promoted 2026-08-31 after the top-level qpdf-shaped flatten route and
+# NeedAppearances warning/status boundary matched qpdf 11.9.0 in one full run.
+flatten-annotations
 encryption:create reference qdf
 inline-images:complex inline image parsing
 linearization:linearized and modified
