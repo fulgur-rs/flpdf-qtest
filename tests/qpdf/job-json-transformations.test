@@ -13,7 +13,7 @@ require TestDriver;
 cleanup();
 
 my $td = new TestDriver('job-json-transformations');
-my $n_tests = 7;
+my $n_tests = 9;
 
 open(F, ">job-json-split.json") or die;
 print F <<'JSON';
@@ -43,6 +43,17 @@ print F <<'JSON';
   "inputFile": "minimal-signed-restricted.pdf",
   "outputFile": "job-json-remove-restrictions.pdf",
   "removeRestrictions": "",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-coalesce.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "coalesce.pdf",
+  "outputFile": "job-json-coalesce.pdf",
+  "coalesceContents": "",
   "staticId": ""
 }
 JSON
@@ -83,6 +94,17 @@ $td->runtest(
 $td->runtest(
     "job JSON removeRestrictions output",
     {$td->COMMAND => "qpdf --show-object=1 job-json-remove-restrictions.pdf | grep -q '/Fields \\[ \\]' && qpdf --show-object=1 job-json-remove-restrictions.pdf | grep -q '/SigFlags 0'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON coalesceContents",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-coalesce.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON coalesceContents output",
+    {$td->COMMAND => "qpdf --show-object=3 job-json-coalesce.pdf | grep -Eq '/Contents [0-9]+ 0 R'"},
     {$td->STRING => "", $td->EXIT_STATUS => 0},
     $td->NORMALIZE_NEWLINES);
 
