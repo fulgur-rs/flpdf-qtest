@@ -34,8 +34,21 @@ jobs:
         id: flpdf_ref
         env:
           INPUT_REF: ${{ inputs.flpdf_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          ref="${INPUT_REF:-main}"
+          ref="${INPUT_REF:-}"
+          if [[ -z "${ref}" && "${EVENT_NAME}" == "pull_request" && -n "${HEAD_REF}" ]]; then
+            # Cross-repository companion PRs use the same branch name in
+            # flpdf. Prefer that branch when it exists so an unmerged helper
+            # can be tested before the flpdf PR lands; ordinary qtest PRs
+            # continue against flpdf main when no matching branch exists.
+            if git ls-remote --exit-code --heads \
+                https://github.com/fulgur-rs/flpdf.git "refs/heads/${HEAD_REF}" >/dev/null 2>&1; then
+              ref="${HEAD_REF}"
+            fi
+          fi
+          ref="${ref:-main}"
           echo "ref=${ref}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout flpdf
@@ -83,7 +96,7 @@ jobs:
         # qtest performs strict file comparisons against qpdf 11.9.0. Use
         # flpdf's opt-in classic libz backend; production defaults remain
         # pure-Rust miniz_oxide.
-        run: cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls
+        run: cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls --bin test_renumber
 
       - name: Run qtest acceptance suite
         env:
@@ -100,6 +113,7 @@ jobs:
           FLPDF_TEST_LARGE_FILE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-large-file
           FLPDF_TEST_FROM_SCRATCH_BIN: ${{ github.workspace }}/flpdf/target/release/pdf_from_scratch
           FLPDF_TEST_MANY_NULLS_BIN: ${{ github.workspace }}/flpdf/target/release/test_many_nulls
+          FLPDF_TEST_RENUMBER_BIN: ${{ github.workspace }}/flpdf/target/release/test_renumber
           FLPDF_COMMIT: ${{ steps.flpdf_sha.outputs.sha }}
           QTEST_FULL: "1"
         run: ./scripts/run.sh

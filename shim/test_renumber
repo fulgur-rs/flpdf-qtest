@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# shim/test_renumber — route qpdf's renumbering helper name to the flpdf
+# test_renumber binary, which consumes the canonical PdfWriter APIs.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_RENUMBER_BIN:-}" ]]; then
+    echo "shim/test_renumber: FLPDF_TEST_RENUMBER_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_RENUMBER_BIN}" ]]; then
+    echo "shim/test_renumber: FLPDF_TEST_RENUMBER_BIN=${FLPDF_TEST_RENUMBER_BIN} is not executable" >&2
+    exit 127
+fi
+
+exec -a test_renumber "${FLPDF_TEST_RENUMBER_BIN}" "$@"

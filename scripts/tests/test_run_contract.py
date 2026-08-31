@@ -75,6 +75,21 @@ class RunContractTest(unittest.TestCase):
             r'survey/latest/qtest-parity-metrics\.jsonl',
         )
 
+    def test_ci_prefers_a_matching_flpdf_pull_request_branch(self) -> None:
+        self.assertIn('HEAD_REF: ${{ github.head_ref }}', self.workflow)
+        self.assertIn('git ls-remote --exit-code --heads', self.workflow)
+        self.assertRegex(
+            self.workflow,
+            r'(?s)if git ls-remote --exit-code --heads.*?'
+            r'"refs/heads/\$\{HEAD_REF\}".*?then.*?'
+            r'ref="\$\{HEAD_REF\}"',
+        )
+        self.assertIn(
+            'https://github.com/fulgur-rs/flpdf.git "refs/heads/${HEAD_REF}"',
+            self.workflow,
+        )
+        self.assertIn('ref="${ref:-main}"', self.workflow)
+
     def test_runner_exposes_no_subset_selection_interface(self) -> None:
         self.assertNotIn("QTEST_TESTS", self.script)
 
@@ -92,6 +107,7 @@ class RunContractTest(unittest.TestCase):
             ("FLPDF_TEST_LARGE_FILE_BIN", "flpdf-test-large-file"),
             ("FLPDF_TEST_FROM_SCRATCH_BIN", "pdf_from_scratch"),
             ("FLPDF_TEST_MANY_NULLS_BIN", "test_many_nulls"),
+            ("FLPDF_TEST_RENUMBER_BIN", "test_renumber"),
         ):
             self.assertIn(f'if [[ -z "${{{variable}:-}}" ]]', self.script)
             self.assertIn(

@@ -73,7 +73,7 @@ XML from different runs: doing so is rejected as an inconsistent result set.
 ## Running locally
 
 ```bash
-# Build all thirteen binaries the harness needs. Select them by binary name so an
+# Build all fourteen binaries the harness needs. Select them by binary name so an
 # flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
 cargo build --release --features qpdf-zlib-compat \
@@ -81,7 +81,8 @@ cargo build --release --features qpdf-zlib-compat \
   --bin qpdfjob-ctest --bin qpdf-ctest \
   --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode \
   --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset \
-  --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls
+  --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls \
+  --bin test_renumber
 
 # Then drive qtest.
 cd /path/to/flpdf-qtest
@@ -98,6 +99,7 @@ FLPDF_TEST_PARSED_OFFSET_BIN=/path/to/flpdf/target/release/test_parsedoffset \
 FLPDF_TEST_LARGE_FILE_BIN=/path/to/flpdf/target/release/flpdf-test-large-file \
 FLPDF_TEST_FROM_SCRATCH_BIN=/path/to/flpdf/target/release/pdf_from_scratch \
 FLPDF_TEST_MANY_NULLS_BIN=/path/to/flpdf/target/release/test_many_nulls \
+FLPDF_TEST_RENUMBER_BIN=/path/to/flpdf/target/release/test_renumber \
 QTEST_FULL=1 \
   ./scripts/run.sh
 ```
@@ -122,8 +124,8 @@ Useful env knobs:
   `FLPDF_TEST_PDF_DOC_ENCODING_BIN`, `FLPDF_TEST_PDF_UNICODE_BIN`,
   `FLPDF_TEST_UNICODE_FILENAMES_BIN`, `FLPDF_TEST_XREF_BIN`,
   `FLPDF_TEST_PARSED_OFFSET_BIN`, `FLPDF_TEST_LARGE_FILE_BIN`,
-  `FLPDF_TEST_FROM_SCRATCH_BIN`, or `FLPDF_TEST_MANY_NULLS_BIN` is unset,
-  build all thirteen binaries in that
+  `FLPDF_TEST_FROM_SCRATCH_BIN`, `FLPDF_TEST_MANY_NULLS_BIN`, or
+  `FLPDF_TEST_RENUMBER_BIN` is unset, build all fourteen binaries in that
   checkout, using the built path for each binary whose environment variable is
   unset.
 
@@ -238,8 +240,8 @@ stderr message), so dependent subtests are recorded as real failures.
 Supported helpers delegate to Rust binaries: `test_driver`, `qpdfjob-ctest`,
 `test_pdf_doc_encoding`, `test_pdf_unicode`, `test_unicode_filenames`,
 `test_xref`, `test_parsedoffset`, and `test_large_file` route to
-`flpdf-qtest-tools`, while
-`fix-qdf` routes to `flpdf`.
+`flpdf-qtest-tools`, and `test_renumber` routes there as well; `fix-qdf`
+routes to `flpdf`.
 
 ## License
 
