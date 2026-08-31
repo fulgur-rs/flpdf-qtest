@@ -92,6 +92,7 @@ class RunContractTest(unittest.TestCase):
             ("FLPDF_TEST_LARGE_FILE_BIN", "flpdf-test-large-file"),
             ("FLPDF_TEST_FROM_SCRATCH_BIN", "pdf_from_scratch"),
             ("FLPDF_TEST_MANY_NULLS_BIN", "test_many_nulls"),
+            ("FLPDF_TEST_RENUMBER_BIN", "test_renumber"),
         ):
             self.assertIn(f'if [[ -z "${{{variable}:-}}" ]]', self.script)
             self.assertIn(

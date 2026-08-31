@@ -101,6 +101,9 @@ class RunExecutionTest(unittest.TestCase):
                     "\n",
                     ($ENV{"FLPDF_TEST_MANY_NULLS_BIN"} // ""),
                     "\n";
+                print {$helper_env}
+                    ($ENV{"FLPDF_TEST_RENUMBER_BIN"} // ""),
+                    "\n";
                 close $helper_env;
                 my $datadir = "";
                 for (my $i = 0; $i < scalar(@ARGV); ++$i) {
@@ -238,6 +241,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_LARGE_FILE_BIN": str(self.fake_binary),
                 "FLPDF_TEST_FROM_SCRATCH_BIN": str(self.fake_binary),
                 "FLPDF_TEST_MANY_NULLS_BIN": str(self.fake_binary),
+                "FLPDF_TEST_RENUMBER_BIN": str(self.fake_binary),
                 "FAKE_QTEST_MODE": mode,
             }
         )
@@ -340,7 +344,7 @@ class RunExecutionTest(unittest.TestCase):
             "for name in flpdf flpdf-test-compare flpdf-test-driver qpdfjob-ctest qpdf-ctest "
                 "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode "
                 "flpdf-test-unicode-filenames test_xref test_parsedoffset flpdf-test-large-file "
-                "pdf_from_scratch test_many_nulls; do\n"
+                "pdf_from_scratch test_many_nulls test_renumber; do\n"
             "  printf '#!/usr/bin/env sh\\nexit 0\\n' "
             "> \"$FLPDF_DIR/target/release/$name\"\n"
             "  chmod +x \"$FLPDF_DIR/target/release/$name\"\n"
@@ -366,6 +370,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_LARGE_FILE_BIN": None,
                 "FLPDF_TEST_FROM_SCRATCH_BIN": None,
                 "FLPDF_TEST_MANY_NULLS_BIN": None,
+                "FLPDF_TEST_RENUMBER_BIN": None,
                 "FLPDF_DIR": str(flpdf_dir),
                 "PATH": f"{fake_tools}:{os.environ['PATH']}",
             },
@@ -408,6 +413,8 @@ class RunExecutionTest(unittest.TestCase):
                 "pdf_from_scratch",
                 "--bin",
                 "test_many_nulls",
+                "--bin",
+                "test_renumber",
             ],
         )
         self.assertEqual(
@@ -425,6 +432,7 @@ class RunExecutionTest(unittest.TestCase):
                 str(release_dir / "flpdf-test-large-file"),
                 str(release_dir / "pdf_from_scratch"),
                 str(release_dir / "test_many_nulls"),
+                str(release_dir / "test_renumber"),
             ],
         )
 
