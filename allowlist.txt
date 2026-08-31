@@ -46,6 +46,9 @@ copy-annotations:page splitting with fields
 merge-and-split:force full page duplication
 merge-and-split:merge with . and implicit ranges
 overwrite-self:output is not really output for split
+progress-reporting:progress report on small file
+progress-reporting:progress report to stdout
+progress-reporting:compare
 rotate-pages:rotate all pages
 split-pages:split pages %d at beginning
 
