@@ -54,6 +54,14 @@
 #                           Absolute path to flpdf-test-large-file, the Rust
 #                           port of qpdf/test_large_file.cc. Same resolution
 #                           order as FLPDF_CLI_BIN.
+#   FLPDF_TEST_FROM_SCRATCH_BIN
+#                           Absolute path to pdf_from_scratch, the Rust port
+#                           of qpdf/pdf_from_scratch.cc. Same resolution
+#                           order as FLPDF_CLI_BIN.
+#   FLPDF_TEST_MANY_NULLS_BIN
+#                           Absolute path to test_many_nulls, the Rust port
+#                           of qpdf/test_many_nulls.cc. Same resolution order
+#                           as FLPDF_CLI_BIN.
 #
 # Optional env:
 #   FLPDF_DIR      Absolute path to a flpdf checkout. If set and any of
@@ -65,8 +73,10 @@
 #                  FLPDF_TEST_PDF_UNICODE_BIN /
 #                  FLPDF_TEST_UNICODE_FILENAMES_BIN /
 #                  FLPDF_TEST_XREF_BIN / FLPDF_TEST_PARSED_OFFSET_BIN /
-#                  FLPDF_TEST_LARGE_FILE_BIN is not, the script runs one
-#                  release build selecting all eleven
+#                  FLPDF_TEST_LARGE_FILE_BIN /
+#                  FLPDF_TEST_FROM_SCRATCH_BIN /
+#                  FLPDF_TEST_MANY_NULLS_BIN is not, the script runs one
+#                  release build selecting all thirteen
 #                  binaries there and always
 #                  uses those freshly-built binaries.
 #   QTEST_FULL     When "1", run every *.test in vendor/qpdf-qtest/.
@@ -263,12 +273,36 @@ if [[ -z "${FLPDF_TEST_LARGE_FILE_BIN:-}" ]]; then
     fi
 fi
 
+if [[ -z "${FLPDF_TEST_FROM_SCRATCH_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_FROM_SCRATCH_BIN="${FLPDF_DIR}/target/release/pdf_from_scratch"
+    elif [[ -x "${repo_root}/flpdf/target/release/pdf_from_scratch" ]]; then
+        FLPDF_TEST_FROM_SCRATCH_BIN="${repo_root}/flpdf/target/release/pdf_from_scratch"
+    else
+        echo "run.sh: cannot locate pdf_from_scratch (set FLPDF_TEST_FROM_SCRATCH_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
+fi
+
+if [[ -z "${FLPDF_TEST_MANY_NULLS_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_MANY_NULLS_BIN="${FLPDF_DIR}/target/release/test_many_nulls"
+    elif [[ -x "${repo_root}/flpdf/target/release/test_many_nulls" ]]; then
+        FLPDF_TEST_MANY_NULLS_BIN="${repo_root}/flpdf/target/release/test_many_nulls"
+    else
+        echo "run.sh: cannot locate test_many_nulls (set FLPDF_TEST_MANY_NULLS_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
+fi
+
 if [[ ${need_build} -eq 1 ]]; then
-    echo "==> Building flpdf and eleven qtest helper binaries in ${FLPDF_DIR}"
+    echo "==> Building flpdf and thirteen qtest helper binaries in ${FLPDF_DIR}"
     # qtest compares re-filtered stream files byte-for-byte with qpdf 11.9.0.
     # Use flpdf's opt-in classic libz backend for that strict oracle boundary;
     # ordinary flpdf production builds keep the default pure-Rust backend.
-    ( cd "${FLPDF_DIR}" && cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file )
+    ( cd "${FLPDF_DIR}" && cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls )
 fi
 
 export FLPDF_CLI_BIN
@@ -282,6 +316,8 @@ export FLPDF_TEST_UNICODE_FILENAMES_BIN
 export FLPDF_TEST_XREF_BIN
 export FLPDF_TEST_PARSED_OFFSET_BIN
 export FLPDF_TEST_LARGE_FILE_BIN
+export FLPDF_TEST_FROM_SCRATCH_BIN
+export FLPDF_TEST_MANY_NULLS_BIN
 
 for bin in \
     "${FLPDF_CLI_BIN}" \
@@ -294,7 +330,9 @@ for bin in \
     "${FLPDF_TEST_UNICODE_FILENAMES_BIN}" \
     "${FLPDF_TEST_XREF_BIN}" \
     "${FLPDF_TEST_PARSED_OFFSET_BIN}" \
-    "${FLPDF_TEST_LARGE_FILE_BIN}"; do
+    "${FLPDF_TEST_LARGE_FILE_BIN}" \
+    "${FLPDF_TEST_FROM_SCRATCH_BIN}" \
+    "${FLPDF_TEST_MANY_NULLS_BIN}"; do
     if [[ ! -x "${bin}" ]]; then
         echo "run.sh: ${bin} is not executable" >&2
         exit 2
