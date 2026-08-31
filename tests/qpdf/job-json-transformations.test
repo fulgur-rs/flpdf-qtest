@@ -1,0 +1,156 @@
+#!/usr/bin/env perl
+require 5.008;
+use warnings;
+use strict;
+
+unshift(@INC, '.');
+require qpdf_test_helpers;
+
+chdir("qpdf") or die "chdir testdir failed: $!\n";
+
+require TestDriver;
+
+cleanup();
+
+my $td = new TestDriver('job-json-transformations');
+my $n_tests = 13;
+
+open(F, ">job-json-split.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "minimal.pdf",
+  "outputFile": "job-json-split.pdf",
+  "splitPages": "1",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-rotate.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "minimal.pdf",
+  "outputFile": "job-json-rotate.pdf",
+  "rotate": "90",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-remove-restrictions.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "minimal-signed-restricted.pdf",
+  "outputFile": "job-json-remove-restrictions.pdf",
+  "removeRestrictions": "",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-coalesce.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "coalesce.pdf",
+  "outputFile": "job-json-coalesce.pdf",
+  "coalesceContents": "",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-flatten-rotation.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "boxes.pdf",
+  "outputFile": "job-json-flatten-rotation.pdf",
+  "flattenRotation": "",
+  "staticId": ""
+}
+JSON
+close(F);
+
+open(F, ">job-json-generate-appearances.json") or die;
+print F <<'JSON';
+{
+  "inputFile": "need-appearances.pdf",
+  "outputFile": "job-json-generate-appearances.pdf",
+  "generateAppearances": "",
+  "staticId": ""
+}
+JSON
+close(F);
+
+$td->runtest(
+    "job JSON splitPages",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-split.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON splitPages output naming",
+    {$td->COMMAND => "test -f job-json-split-1.pdf && test ! -e job-json-split.pdf"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON splitPages output",
+    {$td->COMMAND => "qpdf --show-object=3 job-json-split-1.pdf >/dev/null"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON rotate",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-rotate.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON rotate output",
+    {$td->COMMAND => "qpdf --show-object=3 job-json-rotate.pdf | grep -q '/Rotate 90'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON removeRestrictions",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-remove-restrictions.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON removeRestrictions output",
+    {$td->COMMAND => "qpdf --show-object=1 job-json-remove-restrictions.pdf | grep -q '/Fields \\[ \\]' && qpdf --show-object=1 job-json-remove-restrictions.pdf | grep -q '/SigFlags 0'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON coalesceContents",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-coalesce.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON coalesceContents output",
+    {$td->COMMAND => "qpdf --show-object=3 job-json-coalesce.pdf | grep -Eq '/Contents [0-9]+ 0 R'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON flattenRotation",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-flatten-rotation.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON flattenRotation output",
+    {$td->COMMAND => "qpdf --show-object=4 job-json-flatten-rotation.pdf | grep -q '/MediaBox \\[ 0 0 792 612 \\]' && ! qpdf --show-object=4 job-json-flatten-rotation.pdf | grep -q '/Rotate'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+$td->runtest(
+    "job JSON generateAppearances",
+    {$td->COMMAND => "qpdf --job-json-file=job-json-generate-appearances.json"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+$td->runtest(
+    "job JSON generateAppearances output",
+    {$td->COMMAND => "qpdf --json=2 --json-key=acroform job-json-generate-appearances.pdf | grep -q '\"needappearances\": false'"},
+    {$td->STRING => "", $td->EXIT_STATUS => 0},
+    $td->NORMALIZE_NEWLINES);
+
+cleanup();
+$td->report($n_tests);
