@@ -768,8 +768,8 @@
 {"id":"encryption 4","suite":"encryption","category":"encryption","ordinal":4,"description":"empty owner password","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 5","suite":"encryption","category":"encryption","ordinal":5,"description":"allow insecure","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 6","suite":"encryption","category":"encryption","ordinal":6,"description":"check insecure","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 7","suite":"encryption","category":"encryption","ordinal":7,"description":"significant password characters (V < 5)","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
-{"id":"encryption 8","suite":"encryption","category":"encryption","ordinal":8,"description":"significant password characters (V = 5)","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 7","suite":"encryption","category":"encryption","ordinal":7,"description":"significant password characters (V < 5)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
+{"id":"encryption 8","suite":"encryption","category":"encryption","ordinal":8,"description":"significant password characters (V = 5)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 9","suite":"encryption","category":"encryption","ordinal":9,"description":"decrypt base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 10","suite":"encryption","category":"encryption","ordinal":10,"description":"check ID","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 11","suite":"encryption","category":"encryption","ordinal":11,"description":"decrypt R3,V2","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -794,7 +794,7 @@
 {"id":"encryption 30","suite":"encryption","category":"encryption","ordinal":30,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 31","suite":"encryption","category":"encryption","ordinal":31,"description":"encrypt R3,V2,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 32","suite":"encryption","category":"encryption","ordinal":32,"description":"check /P enc2 (4)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 33","suite":"encryption","category":"encryption","ordinal":33,"description":"json encrypt key (4)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 33","suite":"encryption","category":"encryption","ordinal":33,"description":"json encrypt key (4)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 34","suite":"encryption","category":"encryption","ordinal":34,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 35","suite":"encryption","category":"encryption","ordinal":35,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 36","suite":"encryption","category":"encryption","ordinal":36,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -821,7 +821,7 @@
 {"id":"encryption 57","suite":"encryption","category":"encryption","ordinal":57,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 58","suite":"encryption","category":"encryption","ordinal":58,"description":"encrypt R3,V2,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 59","suite":"encryption","category":"encryption","ordinal":59,"description":"check /P enc2 (7)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 60","suite":"encryption","category":"encryption","ordinal":60,"description":"json encrypt key (7)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 60","suite":"encryption","category":"encryption","ordinal":60,"description":"json encrypt key (7)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 61","suite":"encryption","category":"encryption","ordinal":61,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 62","suite":"encryption","category":"encryption","ordinal":62,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 63","suite":"encryption","category":"encryption","ordinal":63,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -830,7 +830,7 @@
 {"id":"encryption 66","suite":"encryption","category":"encryption","ordinal":66,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 67","suite":"encryption","category":"encryption","ordinal":67,"description":"encrypt R3,V2,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 68","suite":"encryption","category":"encryption","ordinal":68,"description":"check /P enc2 (8)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 69","suite":"encryption","category":"encryption","ordinal":69,"description":"json encrypt key (8)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 69","suite":"encryption","category":"encryption","ordinal":69,"description":"json encrypt key (8)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 70","suite":"encryption","category":"encryption","ordinal":70,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 71","suite":"encryption","category":"encryption","ordinal":71,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 72","suite":"encryption","category":"encryption","ordinal":72,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -839,7 +839,7 @@
 {"id":"encryption 75","suite":"encryption","category":"encryption","ordinal":75,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 76","suite":"encryption","category":"encryption","ordinal":76,"description":"encrypt R3,V2,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 77","suite":"encryption","category":"encryption","ordinal":77,"description":"check /P enc2 (9)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 78","suite":"encryption","category":"encryption","ordinal":78,"description":"json encrypt key (9)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 78","suite":"encryption","category":"encryption","ordinal":78,"description":"json encrypt key (9)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 79","suite":"encryption","category":"encryption","ordinal":79,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 80","suite":"encryption","category":"encryption","ordinal":80,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 81","suite":"encryption","category":"encryption","ordinal":81,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -848,7 +848,7 @@
 {"id":"encryption 84","suite":"encryption","category":"encryption","ordinal":84,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 85","suite":"encryption","category":"encryption","ordinal":85,"description":"encrypt R3,V2,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 86","suite":"encryption","category":"encryption","ordinal":86,"description":"check /P enc2 (10)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 87","suite":"encryption","category":"encryption","ordinal":87,"description":"json encrypt key (10)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 87","suite":"encryption","category":"encryption","ordinal":87,"description":"json encrypt key (10)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 88","suite":"encryption","category":"encryption","ordinal":88,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 89","suite":"encryption","category":"encryption","ordinal":89,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 90","suite":"encryption","category":"encryption","ordinal":90,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -857,7 +857,7 @@
 {"id":"encryption 93","suite":"encryption","category":"encryption","ordinal":93,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 94","suite":"encryption","category":"encryption","ordinal":94,"description":"encrypt R3,V2,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 95","suite":"encryption","category":"encryption","ordinal":95,"description":"check /P enc2 (11)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 96","suite":"encryption","category":"encryption","ordinal":96,"description":"json encrypt key (11)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 96","suite":"encryption","category":"encryption","ordinal":96,"description":"json encrypt key (11)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 97","suite":"encryption","category":"encryption","ordinal":97,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 98","suite":"encryption","category":"encryption","ordinal":98,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 99","suite":"encryption","category":"encryption","ordinal":99,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -866,7 +866,7 @@
 {"id":"encryption 102","suite":"encryption","category":"encryption","ordinal":102,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 103","suite":"encryption","category":"encryption","ordinal":103,"description":"encrypt R3,V2,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 104","suite":"encryption","category":"encryption","ordinal":104,"description":"check /P enc2 (12)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 105","suite":"encryption","category":"encryption","ordinal":105,"description":"json encrypt key (12)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 105","suite":"encryption","category":"encryption","ordinal":105,"description":"json encrypt key (12)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 106","suite":"encryption","category":"encryption","ordinal":106,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 107","suite":"encryption","category":"encryption","ordinal":107,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 108","suite":"encryption","category":"encryption","ordinal":108,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -875,7 +875,7 @@
 {"id":"encryption 111","suite":"encryption","category":"encryption","ordinal":111,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 112","suite":"encryption","category":"encryption","ordinal":112,"description":"encrypt R3,V2,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 113","suite":"encryption","category":"encryption","ordinal":113,"description":"check /P enc2 (13)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 114","suite":"encryption","category":"encryption","ordinal":114,"description":"json encrypt key (13)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 114","suite":"encryption","category":"encryption","ordinal":114,"description":"json encrypt key (13)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 115","suite":"encryption","category":"encryption","ordinal":115,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 116","suite":"encryption","category":"encryption","ordinal":116,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 117","suite":"encryption","category":"encryption","ordinal":117,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -884,7 +884,7 @@
 {"id":"encryption 120","suite":"encryption","category":"encryption","ordinal":120,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 121","suite":"encryption","category":"encryption","ordinal":121,"description":"encrypt R2,V1","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 122","suite":"encryption","category":"encryption","ordinal":122,"description":"check /P enc2 (14)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 123","suite":"encryption","category":"encryption","ordinal":123,"description":"json encrypt key (14)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 123","suite":"encryption","category":"encryption","ordinal":123,"description":"json encrypt key (14)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 124","suite":"encryption","category":"encryption","ordinal":124,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 125","suite":"encryption","category":"encryption","ordinal":125,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 126","suite":"encryption","category":"encryption","ordinal":126,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -893,7 +893,7 @@
 {"id":"encryption 129","suite":"encryption","category":"encryption","ordinal":129,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 130","suite":"encryption","category":"encryption","ordinal":130,"description":"encrypt R2,V1,U=view,O=view","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 131","suite":"encryption","category":"encryption","ordinal":131,"description":"check /P enc2 (15)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 132","suite":"encryption","category":"encryption","ordinal":132,"description":"json encrypt key (15)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 132","suite":"encryption","category":"encryption","ordinal":132,"description":"json encrypt key (15)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 133","suite":"encryption","category":"encryption","ordinal":133,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 134","suite":"encryption","category":"encryption","ordinal":134,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 135","suite":"encryption","category":"encryption","ordinal":135,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -902,7 +902,7 @@
 {"id":"encryption 138","suite":"encryption","category":"encryption","ordinal":138,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 139","suite":"encryption","category":"encryption","ordinal":139,"description":"encrypt R2,V1,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 140","suite":"encryption","category":"encryption","ordinal":140,"description":"check /P enc2 (16)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 141","suite":"encryption","category":"encryption","ordinal":141,"description":"json encrypt key (16)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 141","suite":"encryption","category":"encryption","ordinal":141,"description":"json encrypt key (16)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 142","suite":"encryption","category":"encryption","ordinal":142,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 143","suite":"encryption","category":"encryption","ordinal":143,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 144","suite":"encryption","category":"encryption","ordinal":144,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -911,7 +911,7 @@
 {"id":"encryption 147","suite":"encryption","category":"encryption","ordinal":147,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 148","suite":"encryption","category":"encryption","ordinal":148,"description":"encrypt R2,V1,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 149","suite":"encryption","category":"encryption","ordinal":149,"description":"check /P enc2 (17)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 150","suite":"encryption","category":"encryption","ordinal":150,"description":"json encrypt key (17)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 150","suite":"encryption","category":"encryption","ordinal":150,"description":"json encrypt key (17)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 151","suite":"encryption","category":"encryption","ordinal":151,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 152","suite":"encryption","category":"encryption","ordinal":152,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 153","suite":"encryption","category":"encryption","ordinal":153,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -920,7 +920,7 @@
 {"id":"encryption 156","suite":"encryption","category":"encryption","ordinal":156,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 157","suite":"encryption","category":"encryption","ordinal":157,"description":"encrypt R2,V1,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 158","suite":"encryption","category":"encryption","ordinal":158,"description":"check /P enc2 (18)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 159","suite":"encryption","category":"encryption","ordinal":159,"description":"json encrypt key (18)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 159","suite":"encryption","category":"encryption","ordinal":159,"description":"json encrypt key (18)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 160","suite":"encryption","category":"encryption","ordinal":160,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 161","suite":"encryption","category":"encryption","ordinal":161,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 162","suite":"encryption","category":"encryption","ordinal":162,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -929,7 +929,7 @@
 {"id":"encryption 165","suite":"encryption","category":"encryption","ordinal":165,"description":"check against base","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 166","suite":"encryption","category":"encryption","ordinal":166,"description":"encrypt R2,V1,U=view,O=master","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 167","suite":"encryption","category":"encryption","ordinal":167,"description":"check /P enc2 (19)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 168","suite":"encryption","category":"encryption","ordinal":168,"description":"json encrypt key (19)","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 168","suite":"encryption","category":"encryption","ordinal":168,"description":"json encrypt key (19)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 169","suite":"encryption","category":"encryption","ordinal":169,"description":"decrypt again","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 170","suite":"encryption","category":"encryption","ordinal":170,"description":"compare","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 171","suite":"encryption","category":"encryption","ordinal":171,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -999,7 +999,7 @@
 {"id":"encryption 235","suite":"encryption","category":"encryption","ordinal":235,"description":"preserve encryption","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 236","suite":"encryption","category":"encryption","ordinal":236,"description":"check /P enc4 (30)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 237","suite":"encryption","category":"encryption","ordinal":237,"description":"non-encrypted","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 238","suite":"encryption","category":"encryption","ordinal":238,"description":"invalid password","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 238","suite":"encryption","category":"encryption","ordinal":238,"description":"invalid password","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 239","suite":"encryption","category":"encryption","ordinal":239,"description":"C API: invalid password","state":"excluded","rationale":"C/C++ ABI route is outside Rust parity","owner":null,"bead":null,"replacement_ref":"bead:flpdf-25kg.2.1"}
 {"id":"encryption 240","suite":"encryption","category":"encryption","ordinal":240,"description":"show-encryption works invalid password","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 241","suite":"encryption","category":"encryption","ordinal":241,"description":"C API encryption: r2","state":"excluded","rationale":"C/C++ ABI route is outside Rust parity","owner":null,"bead":null,"replacement_ref":"bead:flpdf-25kg.2.1"}
@@ -1009,9 +1009,9 @@
 {"id":"encryption 245","suite":"encryption","category":"encryption","ordinal":245,"description":"C API encryption: r4","state":"excluded","rationale":"C/C++ ABI route is outside Rust parity","owner":null,"bead":null,"replacement_ref":"bead:flpdf-25kg.2.1"}
 {"id":"encryption 246","suite":"encryption","category":"encryption","ordinal":246,"description":"check r4 content","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
 {"id":"encryption 247","suite":"encryption","category":"encryption","ordinal":247,"description":"C API encryption: r5","state":"excluded","rationale":"C/C++ ABI route is outside Rust parity","owner":null,"bead":null,"replacement_ref":"bead:flpdf-25kg.2.1"}
-{"id":"encryption 248","suite":"encryption","category":"encryption","ordinal":248,"description":"check r5","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 248","suite":"encryption","category":"encryption","ordinal":248,"description":"check r5","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 249","suite":"encryption","category":"encryption","ordinal":249,"description":"C API encryption: r6","state":"excluded","rationale":"C/C++ ABI route is outside Rust parity","owner":null,"bead":null,"replacement_ref":"bead:flpdf-25kg.2.1"}
-{"id":"encryption 250","suite":"encryption","category":"encryption","ordinal":250,"description":"check r6","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 250","suite":"encryption","category":"encryption","ordinal":250,"description":"check r6","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 251","suite":"encryption","category":"encryption","ordinal":251,"description":"C API encryption: decrypt with user","state":"excluded","rationale":"C/C++ ABI route is outside Rust parity","owner":null,"bead":null,"replacement_ref":"bead:flpdf-25kg.2.1"}
 {"id":"encryption 252","suite":"encryption","category":"encryption","ordinal":252,"description":"check decrypt with user content","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
 {"id":"encryption 253","suite":"encryption","category":"encryption","ordinal":253,"description":"C API encryption: decrypt with owner","state":"excluded","rationale":"C/C++ ABI route is outside Rust parity","owner":null,"bead":null,"replacement_ref":"bead:flpdf-25kg.2.1"}
@@ -1087,19 +1087,19 @@
 {"id":"encryption 323","suite":"encryption","category":"encryption","ordinal":323,"description":"unfilterable with crypt","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 324","suite":"encryption","category":"encryption","ordinal":324,"description":"decrypt file","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 325","suite":"encryption","category":"encryption","ordinal":325,"description":"copy of unfilterable with crypt","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 326","suite":"encryption","category":"encryption","ordinal":326,"description":"use/show encryption key (user)","state":"blocked","rationale":"CLI option --show-encryption-key is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
-{"id":"encryption 327","suite":"encryption","category":"encryption","ordinal":327,"description":"use/show encryption key (owner)","state":"blocked","rationale":"CLI option --show-encryption-key is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
-{"id":"encryption 328","suite":"encryption","category":"encryption","ordinal":328,"description":"use/show encryption key (hex)","state":"blocked","rationale":"CLI option --show-encryption-key is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 326","suite":"encryption","category":"encryption","ordinal":326,"description":"use/show encryption key (user)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
+{"id":"encryption 327","suite":"encryption","category":"encryption","ordinal":327,"description":"use/show encryption key (owner)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
+{"id":"encryption 328","suite":"encryption","category":"encryption","ordinal":328,"description":"use/show encryption key (hex)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 329","suite":"encryption","category":"encryption","ordinal":329,"description":"set encryption before set filename","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption 330","suite":"encryption","category":"encryption","ordinal":330,"description":"check file's validity","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption 331","suite":"encryption","category":"encryption","ordinal":331,"description":"handle missing/invalid Length","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption 331","suite":"encryption","category":"encryption","ordinal":331,"description":"handle missing/invalid Length","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption-parameters 1","suite":"encryption-parameters","category":"encryption-parameters","ordinal":1,"description":"encrypt short-id.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption-parameters 2","suite":"encryption-parameters","category":"encryption-parameters","ordinal":2,"description":"check short-id.pdf","state":"blocked","rationale":"CLI option --show-encryption-key is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption-parameters 2","suite":"encryption-parameters","category":"encryption-parameters","ordinal":2,"description":"check short-id.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption-parameters 3","suite":"encryption-parameters","category":"encryption-parameters","ordinal":3,"description":"linearize short-id.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption-parameters 4","suite":"encryption-parameters","category":"encryption-parameters","ordinal":4,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption-parameters 5","suite":"encryption-parameters","category":"encryption-parameters","ordinal":5,"description":"check short-id.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption-parameters 6","suite":"encryption-parameters","category":"encryption-parameters","ordinal":6,"description":"encrypt long-id.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"encryption-parameters 7","suite":"encryption-parameters","category":"encryption-parameters","ordinal":7,"description":"check long-id.pdf","state":"blocked","rationale":"CLI option --show-encryption-key is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.4","replacement_ref":null}
+{"id":"encryption-parameters 7","suite":"encryption-parameters","category":"encryption-parameters","ordinal":7,"description":"check long-id.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption-parameters 8","suite":"encryption-parameters","category":"encryption-parameters","ordinal":8,"description":"linearize long-id.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption-parameters 9","suite":"encryption-parameters","category":"encryption-parameters","ordinal":9,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"encryption-parameters 10","suite":"encryption-parameters","category":"encryption-parameters","ordinal":10,"description":"check long-id.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
