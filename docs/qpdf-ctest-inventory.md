@@ -39,7 +39,7 @@ manifest, not this prose, is the machine-readable ledger.
 | `c-api-stream 1,3` | `test38`: raw/filtered page stream data and stream-boundary errors (`qpdf-ctest.c:1138-1188`) | `rust-test:flpdf:object_handle_page_content_pipeline_tests:pipe_page_contents_uses_qpdf_specialized_filter_decoding` |
 | `c-api-stream 2` | `test39`: foreign-object copy (`qpdf-ctest.c:1189-1213`) | `rust-test:flpdf:copy_foreign_object_route_tests:public_copy_foreign_object_preserves_shared_child_identity` |
 | `c-api-stream 4-5` | `test40`: new stream and writer-visible replacement (`qpdf-ctest.c:1214-1240`) | `rust-test:flpdf:object_handle_content_parser_tests:filter_page_contents_uses_the_canonical_pipeline_and_eof_lifecycle` |
-| `c-api-page 4`, `error-condition 44` | `test36`/`test10` recovery and warning policy | `rust-test:flpdf-cli:cli_tests:suppress_recovery_matches_qpdf_on_a_recoverable_xref_error` |
+| `error-condition 44` | `test10`: no-recovery policy and warning boundary (`qpdf-ctest.c:260-267`) | `rust-test:flpdf-cli:cli_tests:suppress_recovery_matches_qpdf_on_a_recoverable_xref_error` |
 | `error-condition 90` | `test01` warning-bearing metadata read (`qpdf-ctest.c:136-159`) | `rust-test:flpdf:pdf_logger_tests:warning_replays_initial_repair_diagnostics_once_in_original_order` |
 | `newline-before-endstream 11` | `test22`: writer newline policy (`qpdf-ctest.c:470-482`) | `rust-test:flpdf-cli:cli_tests:rewrite_newline_before_endstream_y_accepted_and_produces_valid_output` |
 | `preserve-unref 5` | `test21`: preserve unreachable objects (`qpdf-ctest.c:458-469`) | `rust-test:flpdf-cli:cli_tests:preserve_unreferenced_retains_orphan_across_writer_cli_surfaces` |

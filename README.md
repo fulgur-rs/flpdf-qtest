@@ -177,7 +177,7 @@ The six states have these contracts:
 When present, `replacement_ref` is exactly one typed reference:
 `bead:flpdf-...`, `rust-test:<package>:<target>:<test>`, or
 `scope:<document>#<section>`. C API rows temporarily use
-`bead:flpdf-25kg.2.1` while that inventory mapped them to a concrete Rust oracle
+`bead:flpdf-25kg.2.1` while the inventory mapped them to a concrete Rust oracle
 test or fixed ABI-only scope reference. The completed qpdf-ctest mapping is
 recorded in [`docs/qpdf-ctest-inventory.md`](docs/qpdf-ctest-inventory.md).
 
