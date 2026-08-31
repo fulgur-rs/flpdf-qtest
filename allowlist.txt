@@ -122,9 +122,14 @@ decode-levels
 # NeedAppearances warning/status boundary matched qpdf 11.9.0 in one full run.
 flatten-annotations
 encryption:create reference qdf
+from-scratch:basic qpdf from scratch
+from-scratch:check output
 inline-images:complex inline image parsing
 linearization:linearized and modified
 linearization:modified
+many-nulls:create file with many nulls
+many-nulls:compare output
+many-nulls:run check file
 many-nulls:copy file with many nulls
 preserve-unref:drop unused objects
 qpdf-json:PDF to qdf
@@ -325,7 +330,8 @@ pages-tree:linearize duplicated pages
 parsing:extra header text
 parsing:terminate parsing
 parsing:tokenize content streams
-pclm:check output
+# pclm:check output is informational while flpdf-de0t fixes the known PCLm
+# object-graph regression.
 pclm:write as PCLm
 precheck-streams:bad stream
 qpdf-json:simple version of writeJSON

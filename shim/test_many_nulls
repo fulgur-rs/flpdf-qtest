@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# shim/test_many_nulls — route qpdf's document-generator helper name to the
+# Rust test_many_nulls binary in flpdf-qtest-tools.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_MANY_NULLS_BIN:-}" ]]; then
+    echo "shim/test_many_nulls: FLPDF_TEST_MANY_NULLS_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_MANY_NULLS_BIN}" ]]; then
+    echo "shim/test_many_nulls: FLPDF_TEST_MANY_NULLS_BIN=${FLPDF_TEST_MANY_NULLS_BIN} is not executable" >&2
+    exit 127
+fi
+
+exec -a test_many_nulls "${FLPDF_TEST_MANY_NULLS_BIN}" "$@"

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# shim/pdf_from_scratch — route qpdf's document-construction helper name to
+# the Rust pdf_from_scratch binary in flpdf-qtest-tools.
+
+set -u
+
+if [[ -z "${FLPDF_TEST_FROM_SCRATCH_BIN:-}" ]]; then
+    echo "shim/pdf_from_scratch: FLPDF_TEST_FROM_SCRATCH_BIN is not set" >&2
+    exit 127
+fi
+
+if [[ ! -x "${FLPDF_TEST_FROM_SCRATCH_BIN}" ]]; then
+    echo "shim/pdf_from_scratch: FLPDF_TEST_FROM_SCRATCH_BIN=${FLPDF_TEST_FROM_SCRATCH_BIN} is not executable" >&2
+    exit 127
+fi
+
+exec -a pdf_from_scratch "${FLPDF_TEST_FROM_SCRATCH_BIN}" "$@"

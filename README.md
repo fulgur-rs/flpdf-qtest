@@ -73,7 +73,7 @@ XML from different runs: doing so is rejected as an inconsistent result set.
 ## Running locally
 
 ```bash
-# Build all eleven binaries the harness needs. Select them by binary name so an
+# Build all thirteen binaries the harness needs. Select them by binary name so an
 # flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
 cargo build --release --features qpdf-zlib-compat \
@@ -81,7 +81,7 @@ cargo build --release --features qpdf-zlib-compat \
   --bin qpdfjob-ctest --bin qpdf-ctest \
   --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode \
   --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset \
-  --bin flpdf-test-large-file
+  --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls
 
 # Then drive qtest.
 cd /path/to/flpdf-qtest
@@ -96,6 +96,8 @@ FLPDF_TEST_UNICODE_FILENAMES_BIN=/path/to/flpdf/target/release/flpdf-test-unicod
 FLPDF_TEST_XREF_BIN=/path/to/flpdf/target/release/test_xref \
 FLPDF_TEST_PARSED_OFFSET_BIN=/path/to/flpdf/target/release/test_parsedoffset \
 FLPDF_TEST_LARGE_FILE_BIN=/path/to/flpdf/target/release/flpdf-test-large-file \
+FLPDF_TEST_FROM_SCRATCH_BIN=/path/to/flpdf/target/release/pdf_from_scratch \
+FLPDF_TEST_MANY_NULLS_BIN=/path/to/flpdf/target/release/test_many_nulls \
 QTEST_FULL=1 \
   ./scripts/run.sh
 ```
@@ -119,8 +121,9 @@ Useful env knobs:
   `FLPDF_TEST_QPDFJOB_BIN`, or `FLPDF_TEST_QPDF_CTEST_BIN`,
   `FLPDF_TEST_PDF_DOC_ENCODING_BIN`, `FLPDF_TEST_PDF_UNICODE_BIN`,
   `FLPDF_TEST_UNICODE_FILENAMES_BIN`, `FLPDF_TEST_XREF_BIN`,
-  `FLPDF_TEST_PARSED_OFFSET_BIN`, or `FLPDF_TEST_LARGE_FILE_BIN` is unset,
-  build all eleven binaries in that
+  `FLPDF_TEST_PARSED_OFFSET_BIN`, `FLPDF_TEST_LARGE_FILE_BIN`,
+  `FLPDF_TEST_FROM_SCRATCH_BIN`, or `FLPDF_TEST_MANY_NULLS_BIN` is unset,
+  build all thirteen binaries in that
   checkout, using the built path for each binary whose environment variable is
   unset.
 
