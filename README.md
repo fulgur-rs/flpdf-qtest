@@ -240,8 +240,8 @@ stderr message), so dependent subtests are recorded as real failures.
 Supported helpers delegate to Rust binaries: `test_driver`, `qpdfjob-ctest`,
 `test_pdf_doc_encoding`, `test_pdf_unicode`, `test_unicode_filenames`,
 `test_xref`, `test_parsedoffset`, and `test_large_file` route to
-`flpdf-qtest-tools`, while
-`fix-qdf` routes to `flpdf`.
+`flpdf-qtest-tools`, and `test_renumber` routes there as well; `fix-qdf`
+routes to `flpdf`.
 
 ## License
 

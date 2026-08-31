@@ -78,8 +78,14 @@ class RunContractTest(unittest.TestCase):
     def test_ci_prefers_a_matching_flpdf_pull_request_branch(self) -> None:
         self.assertIn('HEAD_REF: ${{ github.head_ref }}', self.workflow)
         self.assertIn('git ls-remote --exit-code --heads', self.workflow)
+        self.assertRegex(
+            self.workflow,
+            r'(?s)if git ls-remote --exit-code --heads.*?'
+            r'"refs/heads/\$\{HEAD_REF\}".*?then.*?'
+            r'ref="\$\{HEAD_REF\}"',
+        )
         self.assertIn(
-            'https://github.com/fulgur-rs/flpdf.git "${HEAD_REF}"',
+            'https://github.com/fulgur-rs/flpdf.git "refs/heads/${HEAD_REF}"',
             self.workflow,
         )
         self.assertIn('ref="${ref:-main}"', self.workflow)

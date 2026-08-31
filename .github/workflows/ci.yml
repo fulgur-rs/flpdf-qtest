@@ -44,7 +44,7 @@ jobs:
             # can be tested before the flpdf PR lands; ordinary qtest PRs
             # continue against flpdf main when no matching branch exists.
             if git ls-remote --exit-code --heads \
-                https://github.com/fulgur-rs/flpdf.git "${HEAD_REF}" >/dev/null 2>&1; then
+                https://github.com/fulgur-rs/flpdf.git "refs/heads/${HEAD_REF}" >/dev/null 2>&1; then
               ref="${HEAD_REF}"
             fi
           fi
