@@ -1438,7 +1438,7 @@
 {"id":"form-xobject 32","suite":"form-xobject","category":"form-xobject","ordinal":32,"description":"compare files","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 33","suite":"form-xobject","category":"form-xobject","ordinal":33,"description":"overlay/underlay 8","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 34","suite":"form-xobject","category":"form-xobject","ordinal":34,"description":"compare files","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"form-xobject 35","suite":"form-xobject","category":"form-xobject","ordinal":35,"description":"foreach","state":"blocked","rationale":"flpdf-test-driver does not implement test 71","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.2.2","replacement_ref":null}
+{"id":"form-xobject 35","suite":"form-xobject","category":"form-xobject","ordinal":35,"description":"foreach","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 36","suite":"form-xobject","category":"form-xobject","ordinal":36,"description":"page operations on form xobject","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 37","suite":"form-xobject","category":"form-xobject","ordinal":37,"description":"overlay on page with no resources","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 38","suite":"form-xobject","category":"form-xobject","ordinal":38,"description":"check overlay with no resources output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
