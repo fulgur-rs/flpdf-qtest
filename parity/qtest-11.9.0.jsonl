@@ -2214,7 +2214,7 @@
 {"id":"page-api 2","suite":"page-api","category":"page-api","ordinal":2,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 3","suite":"page-api","category":"page-api","ordinal":3,"description":"manual page manipulation","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 4","suite":"page-api","category":"page-api","ordinal":4,"description":"check output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
-{"id":"page-api 5","suite":"page-api","category":"page-api","ordinal":5,"description":"duplicate page","state":"blocked","rationale":"flpdf-test-driver does not implement test 17","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.2.2","replacement_ref":null}
+{"id":"page-api 5","suite":"page-api","category":"page-api","ordinal":5,"description":"duplicate page","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 6","suite":"page-api","category":"page-api","ordinal":6,"description":"delete and re-add a page","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 7","suite":"page-api","category":"page-api","ordinal":7,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 8","suite":"page-api","category":"page-api","ordinal":8,"description":"duplicate page","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
