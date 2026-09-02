@@ -2268,7 +2268,7 @@
 {"id":"pages-tree 17","suite":"pages-tree","category":"pages-tree","ordinal":17,"description":"check page warnings","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsed-offset 1","suite":"parsed-offset","category":"parsed-offset","ordinal":1,"description":"parsed offset without object streams","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsed-offset 2","suite":"parsed-offset","category":"parsed-offset","ordinal":2,"description":"parsed offset with object streams","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"parsing 1","suite":"parsing","category":"parsing","ordinal":1,"description":"parse objects from string","state":"blocked","rationale":"flpdf-test-driver does not implement test 31","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.2.2","replacement_ref":null}
+{"id":"parsing 1","suite":"parsing","category":"parsing","ordinal":1,"description":"parse objects from string","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 2","suite":"parsing","category":"parsing","ordinal":2,"description":"EOF terminating literal tokens","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 3","suite":"parsing","category":"parsing","ordinal":3,"description":"EOF reading token","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
 {"id":"parsing 4","suite":"parsing","category":"parsing","ordinal":4,"description":"extra header text","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
