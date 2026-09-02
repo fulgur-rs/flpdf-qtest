@@ -2481,8 +2481,8 @@
 {"id":"qpdfjob 32","suite":"qpdfjob","category":"qpdfjob","ordinal":32,"description":"QPDFJob good json: misc-options","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 33","suite":"qpdfjob","category":"qpdfjob","ordinal":33,"description":"check good json misc-options output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 34","suite":"qpdfjob","category":"qpdfjob","ordinal":34,"description":"QPDFJob json partial","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"qpdfjob 35","suite":"qpdfjob","category":"qpdfjob","ordinal":35,"description":"QPDFJob API","state":"blocked","rationale":"flpdf-test-driver does not implement test 84","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.2.2","replacement_ref":null}
-{"id":"qpdfjob 36","suite":"qpdfjob","category":"qpdfjob","ordinal":36,"description":"check output","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"qpdfjob 35","suite":"qpdfjob","category":"qpdfjob","ordinal":35,"description":"QPDFJob API","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
+{"id":"qpdfjob 36","suite":"qpdfjob","category":"qpdfjob","ordinal":36,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 37","suite":"qpdfjob","category":"qpdfjob","ordinal":37,"description":"json output from job","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 38","suite":"qpdfjob","category":"qpdfjob","ordinal":38,"description":"C job API","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 39","suite":"qpdfjob","category":"qpdfjob","ordinal":39,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
