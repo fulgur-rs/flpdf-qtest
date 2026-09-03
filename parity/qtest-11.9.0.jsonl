@@ -2218,7 +2218,7 @@
 {"id":"page-api 6","suite":"page-api","category":"page-api","ordinal":6,"description":"delete and re-add a page","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 7","suite":"page-api","category":"page-api","ordinal":7,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 8","suite":"page-api","category":"page-api","ordinal":8,"description":"duplicate page","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"page-api 9","suite":"page-api","category":"page-api","ordinal":9,"description":"remove page we don't have","state":"blocked","rationale":"flpdf-test-driver does not implement test 22","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.2.2","replacement_ref":null}
+{"id":"page-api 9","suite":"page-api","category":"page-api","ordinal":9,"description":"remove page we don't have","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 10","suite":"page-api","category":"page-api","ordinal":10,"description":"flatten rotation","state":"blocked","rationale":"CLI option --flatten-rotation is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
 {"id":"page-api 11","suite":"page-api","category":"page-api","ordinal":11,"description":"check output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
 {"id":"page-api 12","suite":"page-api","category":"page-api","ordinal":12,"description":"get box methods","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
