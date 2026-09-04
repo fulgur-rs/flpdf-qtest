@@ -2421,9 +2421,9 @@
 {"id":"qpdf-json 117","suite":"qpdf-json","category":"qpdf-json","ordinal":117,"description":"create PDF (1)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdf-json 118","suite":"qpdf-json","category":"qpdf-json","ordinal":118,"description":"check PDF (1)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdf-json 119","suite":"qpdf-json","category":"qpdf-json","ordinal":119,"description":"call pushInheritedAttributesToPage","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"qpdf-json 120","suite":"qpdf-json","category":"qpdf-json","ordinal":120,"description":"check json (2)","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"qpdf-json 120","suite":"qpdf-json","category":"qpdf-json","ordinal":120,"description":"check json (2)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdf-json 121","suite":"qpdf-json","category":"qpdf-json","ordinal":121,"description":"update (2)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"qpdf-json 122","suite":"qpdf-json","category":"qpdf-json","ordinal":122,"description":"check json (3)","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"qpdf-json 122","suite":"qpdf-json","category":"qpdf-json","ordinal":122,"description":"check json (3)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdf-json 123","suite":"qpdf-json","category":"qpdf-json","ordinal":123,"description":"create PDF (2)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdf-json 124","suite":"qpdf-json","category":"qpdf-json","ordinal":124,"description":"check PDF (2)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdf-json 125","suite":"qpdf-json","category":"qpdf-json","ordinal":125,"description":"simple version of writeJSON","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
