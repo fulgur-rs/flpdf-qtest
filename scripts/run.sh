@@ -29,7 +29,8 @@
 #                           FLPDF_CLI_BIN.
 #   FLPDF_TEST_QPDF_CTEST_BIN
 #                           Absolute path to qpdf-ctest, the Rust port of
-#                           qpdf-ctest.c test 19, used by shim/qpdf-ctest.
+#                           selected qpdf-ctest.c cases, used by
+#                           shim/qpdf-ctest.
 #                           Same resolution order as FLPDF_CLI_BIN.
 #   FLPDF_TEST_PDF_DOC_ENCODING_BIN
 #                           Absolute path to flpdf-test-pdf-doc-encoding,

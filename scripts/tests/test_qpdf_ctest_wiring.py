@@ -1,4 +1,4 @@
-"""Contracts for the qpdf-ctest test19 helper route."""
+"""Contracts for the qpdf-ctest helper route."""
 
 from __future__ import annotations
 
