@@ -1405,7 +1405,7 @@
 {"id":"flatten-annotations 19","suite":"flatten-annotations","category":"flatten-annotations","ordinal":19,"description":"flatten for print","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"flatten-annotations 20","suite":"flatten-annotations","category":"flatten-annotations","ordinal":20,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 1","suite":"form-xobject","category":"form-xobject","ordinal":1,"description":"form xobject creation","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"form-xobject 2","suite":"form-xobject","category":"form-xobject","ordinal":2,"description":"compare files","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"form-xobject 2","suite":"form-xobject","category":"form-xobject","ordinal":2,"description":"compare files","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 3","suite":"form-xobject","category":"form-xobject","ordinal":3,"description":"overlay transformations","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 4","suite":"form-xobject","category":"form-xobject","ordinal":4,"description":"compare files","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"form-xobject 5","suite":"form-xobject","category":"form-xobject","ordinal":5,"description":"overlay transformations","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
