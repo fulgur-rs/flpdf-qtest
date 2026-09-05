@@ -85,6 +85,8 @@ class RunExecutionTest(unittest.TestCase):
                     "\n",
                     ($ENV{"FLPDF_TEST_QPDF_CTEST_BIN"} // ""),
                     "\n",
+                    ($ENV{"FLPDF_TEST_TOKENIZER_BIN"} // ""),
+                    "\n",
                     ($ENV{"FLPDF_TEST_PDF_DOC_ENCODING_BIN"} // ""),
                     "\n",
                     ($ENV{"FLPDF_TEST_PDF_UNICODE_BIN"} // ""),
@@ -233,6 +235,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_DRIVER_BIN": str(self.fake_binary),
                 "FLPDF_TEST_QPDFJOB_BIN": str(self.fake_binary),
                 "FLPDF_TEST_QPDF_CTEST_BIN": str(self.fake_binary),
+                "FLPDF_TEST_TOKENIZER_BIN": str(self.fake_binary),
                 "FLPDF_TEST_PDF_DOC_ENCODING_BIN": str(self.fake_binary),
                 "FLPDF_TEST_PDF_UNICODE_BIN": str(self.fake_binary),
                 "FLPDF_TEST_UNICODE_FILENAMES_BIN": str(self.fake_binary),
@@ -314,6 +317,17 @@ class RunExecutionTest(unittest.TestCase):
         self.assertFalse((self.live / "received-tests.txt").exists())
         self._assert_generated_absent()
 
+    def test_missing_tokenizer_binary_fails_before_qtest(self) -> None:
+        completed = self._run(
+            "unused",
+            env_overrides={"FLPDF_TEST_TOKENIZER_BIN": None},
+        )
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("cannot locate flpdf-test-tokenizer", completed.stderr)
+        self.assertFalse((self.live / "received-tests.txt").exists())
+        self._assert_generated_absent()
+
     def test_nonexecuting_pdf_unicode_binary_fails_before_qtest(self) -> None:
         nonexecuting = self.repo / "nonexecuting-pdf-unicode"
         nonexecuting.write_text("not executable\n", encoding="utf-8")
@@ -342,7 +356,7 @@ class RunExecutionTest(unittest.TestCase):
             "set -eu\n"
             "printf '%s\\n' \"$@\" > \"$FLPDF_DIR/cargo-args.txt\"\n"
             "for name in flpdf flpdf-test-compare flpdf-test-driver qpdfjob-ctest qpdf-ctest "
-                "flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode "
+                "flpdf-test-tokenizer flpdf-test-pdf-doc-encoding flpdf-test-pdf-unicode "
                 "flpdf-test-unicode-filenames test_xref test_parsedoffset flpdf-test-large-file "
                 "pdf_from_scratch test_many_nulls test_renumber; do\n"
             "  printf '#!/usr/bin/env sh\\nexit 0\\n' "
@@ -362,6 +376,7 @@ class RunExecutionTest(unittest.TestCase):
                 "FLPDF_TEST_DRIVER_BIN": None,
                 "FLPDF_TEST_QPDFJOB_BIN": None,
                 "FLPDF_TEST_QPDF_CTEST_BIN": None,
+                "FLPDF_TEST_TOKENIZER_BIN": None,
                 "FLPDF_TEST_PDF_DOC_ENCODING_BIN": None,
                 "FLPDF_TEST_PDF_UNICODE_BIN": None,
                 "FLPDF_TEST_UNICODE_FILENAMES_BIN": None,
@@ -398,6 +413,8 @@ class RunExecutionTest(unittest.TestCase):
                 "--bin",
                 "qpdf-ctest",
                 "--bin",
+                "flpdf-test-tokenizer",
+                "--bin",
                 "flpdf-test-pdf-doc-encoding",
                 "--bin",
                 "flpdf-test-pdf-unicode",
@@ -424,6 +441,7 @@ class RunExecutionTest(unittest.TestCase):
             [
                 str(release_dir / "qpdfjob-ctest"),
                 str(release_dir / "qpdf-ctest"),
+                str(release_dir / "flpdf-test-tokenizer"),
                 str(release_dir / "flpdf-test-pdf-doc-encoding"),
                 str(release_dir / "flpdf-test-pdf-unicode"),
                 str(release_dir / "flpdf-test-unicode-filenames"),

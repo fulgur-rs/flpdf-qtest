@@ -96,13 +96,14 @@ jobs:
         # qtest performs strict file comparisons against qpdf 11.9.0. Use
         # flpdf's opt-in classic libz backend; production defaults remain
         # pure-Rust miniz_oxide.
-        run: cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls --bin test_renumber
+        run: cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-tokenizer --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls --bin test_renumber
 
       - name: Run qtest acceptance suite
         env:
           FLPDF_CLI_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf
           FLPDF_TEST_COMPARE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-compare
           FLPDF_TEST_DRIVER_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-driver
+          FLPDF_TEST_TOKENIZER_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-tokenizer
           FLPDF_TEST_QPDFJOB_BIN: ${{ github.workspace }}/flpdf/target/release/qpdfjob-ctest
           FLPDF_TEST_QPDF_CTEST_BIN: ${{ github.workspace }}/flpdf/target/release/qpdf-ctest
           FLPDF_TEST_PDF_DOC_ENCODING_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-pdf-doc-encoding
