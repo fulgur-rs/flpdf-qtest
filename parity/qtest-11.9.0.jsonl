@@ -1948,7 +1948,7 @@
 {"id":"many-nulls 6","suite":"many-nulls","category":"many-nulls","ordinal":6,"description":"compare files","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"many-nulls 7","suite":"many-nulls","category":"many-nulls","ordinal":7,"description":"file with many nulls to JSON v1","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"many-nulls 8","suite":"many-nulls","category":"many-nulls","ordinal":8,"description":"file with many nulls to JSON v2","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"merge-and-split 1","suite":"merge-and-split","category":"merge-and-split","ordinal":1,"description":"merge three files","state":"blocked","rationale":"CLI option --progress is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"merge-and-split 1","suite":"merge-and-split","category":"merge-and-split","ordinal":1,"description":"merge three files","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"merge-and-split 2","suite":"merge-and-split","category":"merge-and-split","ordinal":2,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"merge-and-split 3","suite":"merge-and-split","category":"merge-and-split","ordinal":3,"description":"merge three files","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"merge-and-split 4","suite":"merge-and-split","category":"merge-and-split","ordinal":4,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
