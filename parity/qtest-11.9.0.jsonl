@@ -2486,7 +2486,7 @@
 {"id":"qpdfjob 37","suite":"qpdfjob","category":"qpdfjob","ordinal":37,"description":"json output from job","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 38","suite":"qpdfjob","category":"qpdfjob","ordinal":38,"description":"C job API","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 39","suite":"qpdfjob","category":"qpdfjob","ordinal":39,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"qpdfjob 40","suite":"qpdfjob","category":"qpdfjob","ordinal":40,"description":"check output","state":"failing","rationale":"qpdf container-first ObjStm numbering differs for decrypt plus generate","owner":"Mitsuru Hayasaka","bead":"flpdf-cecz","replacement_ref":null}
+{"id":"qpdfjob 40","suite":"qpdfjob","category":"qpdfjob","ordinal":40,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 41","suite":"qpdfjob","category":"qpdfjob","ordinal":41,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 42","suite":"qpdfjob","category":"qpdfjob","ordinal":42,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"qpdfjob 43","suite":"qpdfjob","category":"qpdfjob","ordinal":43,"description":"qpdfjob-ctest wide","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
