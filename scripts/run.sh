@@ -23,6 +23,11 @@
 #                           binary (the Rust port of qpdf's test_driver.cc,
 #                           used by shim/test_driver). Same resolution
 #                           order as FLPDF_CLI_BIN.
+#   FLPDF_TEST_TOKENIZER_BIN
+#                           Absolute path to a built flpdf-test-tokenizer
+#                           binary (the Rust port of qpdf's
+#                           test_tokenizer.cc, used by shim/test_tokenizer).
+#                           Same resolution order as FLPDF_CLI_BIN.
 #   FLPDF_TEST_QPDFJOB_BIN  Absolute path to qpdfjob-ctest, the Rust port of
 #                           qpdf's qpdfjob-ctest.c helper, used by
 #                           shim/qpdfjob-ctest. Same resolution order as
@@ -71,7 +76,7 @@
 # Optional env:
 #   FLPDF_DIR      Absolute path to a flpdf checkout. If set and any of
 #                  FLPDF_CLI_BIN / FLPDF_TEST_COMPARE_BIN /
-#                  FLPDF_TEST_DRIVER_BIN /
+#                  FLPDF_TEST_DRIVER_BIN / FLPDF_TEST_TOKENIZER_BIN /
 #                  FLPDF_TEST_QPDFJOB_BIN /
 #                  FLPDF_TEST_QPDF_CTEST_BIN /
 #                  FLPDF_TEST_PDF_DOC_ENCODING_BIN /
@@ -81,7 +86,7 @@
 #                  FLPDF_TEST_LARGE_FILE_BIN /
 #                  FLPDF_TEST_FROM_SCRATCH_BIN /
 #                  FLPDF_TEST_MANY_NULLS_BIN / FLPDF_TEST_RENUMBER_BIN is not,
-#                  the script runs one release build selecting all fourteen
+#                  the script runs one release build selecting all fifteen
 #                  binaries there and always
 #                  uses those freshly-built binaries.
 #   QTEST_FULL     When "1", run every *.test in vendor/qpdf-qtest/.
@@ -178,6 +183,18 @@ if [[ -z "${FLPDF_TEST_DRIVER_BIN:-}" ]]; then
         FLPDF_TEST_DRIVER_BIN="${repo_root}/flpdf/target/release/flpdf-test-driver"
     else
         echo "run.sh: cannot locate flpdf-test-driver (set FLPDF_TEST_DRIVER_BIN or FLPDF_DIR)" >&2
+        exit 2
+    fi
+fi
+
+if [[ -z "${FLPDF_TEST_TOKENIZER_BIN:-}" ]]; then
+    if [[ -n "${FLPDF_DIR:-}" ]]; then
+        need_build=1
+        FLPDF_TEST_TOKENIZER_BIN="${FLPDF_DIR}/target/release/flpdf-test-tokenizer"
+    elif [[ -x "${repo_root}/flpdf/target/release/flpdf-test-tokenizer" ]]; then
+        FLPDF_TEST_TOKENIZER_BIN="${repo_root}/flpdf/target/release/flpdf-test-tokenizer"
+    else
+        echo "run.sh: cannot locate flpdf-test-tokenizer (set FLPDF_TEST_TOKENIZER_BIN or FLPDF_DIR)" >&2
         exit 2
     fi
 fi
@@ -319,12 +336,13 @@ if [[ ${need_build} -eq 1 ]]; then
     # qtest compares re-filtered stream files byte-for-byte with qpdf 11.9.0.
     # Use flpdf's opt-in classic libz backend for that strict oracle boundary;
     # ordinary flpdf production builds keep the default pure-Rust backend.
-    ( cd "${FLPDF_DIR}" && cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls --bin test_renumber )
+    ( cd "${FLPDF_DIR}" && cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-tokenizer --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls --bin test_renumber )
 fi
 
 export FLPDF_CLI_BIN
 export FLPDF_TEST_COMPARE_BIN
 export FLPDF_TEST_DRIVER_BIN
+export FLPDF_TEST_TOKENIZER_BIN
 export FLPDF_TEST_QPDFJOB_BIN
 export FLPDF_TEST_QPDF_CTEST_BIN
 export FLPDF_TEST_PDF_DOC_ENCODING_BIN
@@ -341,6 +359,7 @@ for bin in \
     "${FLPDF_CLI_BIN}" \
     "${FLPDF_TEST_COMPARE_BIN}" \
     "${FLPDF_TEST_DRIVER_BIN}" \
+    "${FLPDF_TEST_TOKENIZER_BIN}" \
     "${FLPDF_TEST_QPDFJOB_BIN}" \
     "${FLPDF_TEST_QPDF_CTEST_BIN}" \
     "${FLPDF_TEST_PDF_DOC_ENCODING_BIN}" \

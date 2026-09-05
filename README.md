@@ -73,11 +73,12 @@ XML from different runs: doing so is rejected as an inconsistent result set.
 ## Running locally
 
 ```bash
-# Build all fourteen binaries the harness needs. Select them by binary name so an
+# Build all fifteen binaries the harness needs. Select them by binary name so an
 # flpdf-side crate reorganization does not invalidate these instructions.
 cd /path/to/flpdf
 cargo build --release --features qpdf-zlib-compat \
   --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver \
+  --bin flpdf-test-tokenizer \
   --bin qpdfjob-ctest --bin qpdf-ctest \
   --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode \
   --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset \
@@ -89,6 +90,7 @@ cd /path/to/flpdf-qtest
 FLPDF_CLI_BIN=/path/to/flpdf/target/release/flpdf \
 FLPDF_TEST_COMPARE_BIN=/path/to/flpdf/target/release/flpdf-test-compare \
 FLPDF_TEST_DRIVER_BIN=/path/to/flpdf/target/release/flpdf-test-driver \
+FLPDF_TEST_TOKENIZER_BIN=/path/to/flpdf/target/release/flpdf-test-tokenizer \
 FLPDF_TEST_QPDFJOB_BIN=/path/to/flpdf/target/release/qpdfjob-ctest \
 FLPDF_TEST_QPDF_CTEST_BIN=/path/to/flpdf/target/release/qpdf-ctest \
 FLPDF_TEST_PDF_DOC_ENCODING_BIN=/path/to/flpdf/target/release/flpdf-test-pdf-doc-encoding \
@@ -120,12 +122,13 @@ Useful env knobs:
   every non-empty run and for parity validation.
 - `FLPDF_DIR=/path/to/flpdf` — if any of `FLPDF_CLI_BIN`,
   `FLPDF_TEST_COMPARE_BIN`, `FLPDF_TEST_DRIVER_BIN`,
-  `FLPDF_TEST_QPDFJOB_BIN`, or `FLPDF_TEST_QPDF_CTEST_BIN`,
+  `FLPDF_TEST_TOKENIZER_BIN`, `FLPDF_TEST_QPDFJOB_BIN`, or
+  `FLPDF_TEST_QPDF_CTEST_BIN`,
   `FLPDF_TEST_PDF_DOC_ENCODING_BIN`, `FLPDF_TEST_PDF_UNICODE_BIN`,
   `FLPDF_TEST_UNICODE_FILENAMES_BIN`, `FLPDF_TEST_XREF_BIN`,
   `FLPDF_TEST_PARSED_OFFSET_BIN`, `FLPDF_TEST_LARGE_FILE_BIN`,
   `FLPDF_TEST_FROM_SCRATCH_BIN`, `FLPDF_TEST_MANY_NULLS_BIN`, or
-  `FLPDF_TEST_RENUMBER_BIN` is unset, build all fourteen binaries in that
+  `FLPDF_TEST_RENUMBER_BIN` is unset, build all fifteen binaries in that
   checkout, using the built path for each binary whose environment variable is
   unset.
 
