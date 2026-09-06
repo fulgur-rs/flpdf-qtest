@@ -2280,7 +2280,7 @@
 {"id":"parsing 10","suite":"parsing","category":"parsing","ordinal":10,"description":"EOF inside inline image","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 11","suite":"parsing","category":"parsing","ordinal":11,"description":"tokenize content streams","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 12","suite":"parsing","category":"parsing","ordinal":12,"description":"terminate parsing","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"parsing 13","suite":"parsing","category":"parsing","ordinal":13,"description":"content stream errors","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
+{"id":"parsing 13","suite":"parsing","category":"parsing","ordinal":13,"description":"content stream errors","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 14","suite":"parsing","category":"parsing","ordinal":14,"description":"ensure arguments to R are direct","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 15","suite":"parsing","category":"parsing","ordinal":15,"description":"no trailing space in xref table","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 16","suite":"parsing","category":"parsing","ordinal":16,"description":"parse split content stream","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
