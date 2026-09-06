@@ -2021,7 +2021,7 @@
 {"id":"object-copying 6","suite":"object-copying","category":"object-copying","ordinal":6,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"object-copying 7","suite":"object-copying","category":"object-copying","ordinal":7,"description":"detect foreign object in write","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"object-copying 8","suite":"object-copying","category":"object-copying","ordinal":8,"description":"copy a stream","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"object-copying 9","suite":"object-copying","category":"object-copying","ordinal":9,"description":"check output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
+{"id":"object-copying 9","suite":"object-copying","category":"object-copying","ordinal":9,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"object-handle-api 1","suite":"object-handle-api","category":"object-handle-api","ordinal":1,"description":"dictionary keys","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"object-handle-api 2","suite":"object-handle-api","category":"object-handle-api","ordinal":2,"description":"fluent interfaces","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"object-handle-api 3","suite":"object-handle-api","category":"object-handle-api","ordinal":3,"description":"equality","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
