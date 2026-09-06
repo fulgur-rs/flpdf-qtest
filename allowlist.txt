@@ -330,9 +330,8 @@ pages-tree:linearize duplicated pages
 parsing:extra header text
 parsing:terminate parsing
 parsing:tokenize content streams
-# pclm:check output is informational while flpdf-de0t fixes the known PCLm
-# object-graph regression.
 pclm:write as PCLm
+pclm:check output
 precheck-streams:bad stream
 qpdf-json:simple version of writeJSON
 qpdf-json:write JSON to pipeline

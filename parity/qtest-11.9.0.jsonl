@@ -2286,7 +2286,7 @@
 {"id":"parsing 16","suite":"parsing","category":"parsing","ordinal":16,"description":"parse split content stream","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 17","suite":"parsing","category":"parsing","ordinal":17,"description":"split content stream errors","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"pclm 1","suite":"pclm","category":"pclm","ordinal":1,"description":"write as PCLm","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"pclm 2","suite":"pclm","category":"pclm","ordinal":2,"description":"check output","state":"failing","rationale":"Regressed at flpdf 112ab329..73c6d6d7: PCLm output no longer matches qpdf 11.9.0 pclm-out.pdf byte for byte","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"pclm 2","suite":"pclm","category":"pclm","ordinal":2,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"positive-p 1","suite":"positive-p","category":"positive-p","ordinal":1,"description":"decrypt positive P","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"positive-p 2","suite":"positive-p","category":"positive-p","ordinal":2,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"positive-p 3","suite":"positive-p","category":"positive-p","ordinal":3,"description":"copy encryption positive P","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
