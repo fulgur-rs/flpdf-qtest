@@ -2273,9 +2273,9 @@
 {"id":"parsing 3","suite":"parsing","category":"parsing","ordinal":3,"description":"EOF reading token","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 4","suite":"parsing","category":"parsing","ordinal":4,"description":"extra header text","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 5","suite":"parsing","category":"parsing","ordinal":5,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"parsing 6","suite":"parsing","category":"parsing","ordinal":6,"description":"check output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
+{"id":"parsing 6","suite":"parsing","category":"parsing","ordinal":6,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 7","suite":"parsing","category":"parsing","ordinal":7,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"parsing 8","suite":"parsing","category":"parsing","ordinal":8,"description":"check output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
+{"id":"parsing 8","suite":"parsing","category":"parsing","ordinal":8,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 9","suite":"parsing","category":"parsing","ordinal":9,"description":"check file with leading junk","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 10","suite":"parsing","category":"parsing","ordinal":10,"description":"EOF inside inline image","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 11","suite":"parsing","category":"parsing","ordinal":11,"description":"tokenize content streams","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -2284,7 +2284,7 @@
 {"id":"parsing 14","suite":"parsing","category":"parsing","ordinal":14,"description":"ensure arguments to R are direct","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 15","suite":"parsing","category":"parsing","ordinal":15,"description":"no trailing space in xref table","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"parsing 16","suite":"parsing","category":"parsing","ordinal":16,"description":"parse split content stream","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"parsing 17","suite":"parsing","category":"parsing","ordinal":17,"description":"split content stream errors","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
+{"id":"parsing 17","suite":"parsing","category":"parsing","ordinal":17,"description":"split content stream errors","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"pclm 1","suite":"pclm","category":"pclm","ordinal":1,"description":"write as PCLm","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"pclm 2","suite":"pclm","category":"pclm","ordinal":2,"description":"check output","state":"failing","rationale":"Regressed at flpdf 112ab329..73c6d6d7: PCLm output no longer matches qpdf 11.9.0 pclm-out.pdf byte for byte","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
 {"id":"positive-p 1","suite":"positive-p","category":"positive-p","ordinal":1,"description":"decrypt positive P","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
