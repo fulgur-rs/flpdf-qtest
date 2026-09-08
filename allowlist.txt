@@ -45,6 +45,7 @@ copy-annotations:not keeping any fields
 copy-annotations:page splitting with fields
 merge-and-split:force full page duplication
 merge-and-split:merge with . and implicit ranges
+merge-and-split:remove labels
 overwrite-self:output is not really output for split
 progress-reporting:progress report on small file
 progress-reporting:progress report to stdout
@@ -323,8 +324,14 @@ page-api:delete and re-add a page
 page-api:get box methods
 page-api:manual page manipulation
 page-labels:complex page labels
+page-labels:error (1:r 10:D 31:A)
+page-labels:error (1:r/0)
+page-labels:error (5:r 10:D)
+page-labels:error (quack)
+page-labels:after set page labels
 page-labels:no page labels
 page-labels:no zero entry for page labels
+page-labels:set page labels
 pages-tree:extract duplicated pages
 pages-tree:linearize duplicated pages
 parsing:extra header text
