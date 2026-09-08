@@ -2230,7 +2230,7 @@
 {"id":"page-errors 6","suite":"page-errors","category":"page-errors","ordinal":6,"description":"check no type key for page nodes","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-errors 7","suite":"page-errors","category":"page-errors","ordinal":7,"description":"no type key for page nodes","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-errors 8","suite":"page-errors","category":"page-errors","ordinal":8,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"page-errors 9","suite":"page-errors","category":"page-errors","ordinal":9,"description":"detect loops in pages structure","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
+{"id":"page-errors 9","suite":"page-errors","category":"page-errors","ordinal":9,"description":"detect loops in pages structure","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-labels 1","suite":"page-labels","category":"page-labels","ordinal":1,"description":"complex page labels","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-labels 2","suite":"page-labels","category":"page-labels","ordinal":2,"description":"no zero entry for page labels","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-labels 3","suite":"page-labels","category":"page-labels","ordinal":3,"description":"no page labels","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
