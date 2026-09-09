@@ -1366,9 +1366,9 @@
 {"id":"extraction 5","suite":"extraction","category":"extraction","ordinal":5,"description":"show-page-1","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"extraction 6","suite":"extraction","category":"extraction","ordinal":6,"description":"show-page-1-content-raw","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"extraction 7","suite":"extraction","category":"extraction","ordinal":7,"description":"show-page-1-content-filtered","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"extraction 8","suite":"extraction","category":"extraction","ordinal":8,"description":"show-page-1-content-normalized","state":"blocked","rationale":"CLI option --show-object is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"extraction 8","suite":"extraction","category":"extraction","ordinal":8,"description":"show-page-1-content-normalized","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"extraction 9","suite":"extraction","category":"extraction","ordinal":9,"description":"show-page-1-image","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"extraction 10","suite":"extraction","category":"extraction","ordinal":10,"description":"unfilterable stream data","state":"blocked","rationale":"CLI option --show-object is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"extraction 10","suite":"extraction","category":"extraction","ordinal":10,"description":"unfilterable stream data","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"extraction 11","suite":"extraction","category":"extraction","ordinal":11,"description":"show-xref-by-id","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"extraction 12","suite":"extraction","category":"extraction","ordinal":12,"description":"show-xref-by-id-filtered","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"extraction 13","suite":"extraction","category":"extraction","ordinal":13,"description":"show trailer","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
