@@ -243,6 +243,18 @@ get-xref:with object streams
 parsed-offset:parsed offset without object streams
 parsed-offset:parsed offset with object streams
 
+# Promoted after flpdf --replace-input passed the full replace-input suite and
+# the related empty/replace-input argument-parsing case in one QTEST_FULL=1
+# harness.log/qtest-results.xml pair. No vendor test changed.
+arg-parsing:empty and replace-input
+replace-input:replace input auto-ü
+replace-input:check output (auto-ü)
+replace-input:replace input auto-öπ
+replace-input:check output (auto-öπ)
+replace-input:replace input with warnings
+replace-input:check output
+replace-input:check orig output
+
 # Promote batch 2026-08-16 (part 2), from the same full survey at flpdf
 # 10a058f3 that produced the 13-entry batch above. Source: the 106
 # candidates that went NEW in the 2026-08-15 survey (flpdf 88ef9efe,
