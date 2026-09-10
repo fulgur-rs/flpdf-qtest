@@ -2219,8 +2219,8 @@
 {"id":"page-api 7","suite":"page-api","category":"page-api","ordinal":7,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 8","suite":"page-api","category":"page-api","ordinal":8,"description":"duplicate page","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 9","suite":"page-api","category":"page-api","ordinal":9,"description":"remove page we don't have","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"page-api 10","suite":"page-api","category":"page-api","ordinal":10,"description":"flatten rotation","state":"blocked","rationale":"CLI option --flatten-rotation is not implemented","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
-{"id":"page-api 11","suite":"page-api","category":"page-api","ordinal":11,"description":"check output","state":"blocked","rationale":"Prerequisite output or helper is unavailable","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
+{"id":"page-api 10","suite":"page-api","category":"page-api","ordinal":10,"description":"flatten rotation","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
+{"id":"page-api 11","suite":"page-api","category":"page-api","ordinal":11,"description":"check output","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-api 12","suite":"page-api","category":"page-api","ordinal":12,"description":"get box methods","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-errors 1","suite":"page-errors","category":"page-errors","ordinal":1,"description":"handle page no with contents","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"page-errors 2","suite":"page-errors","category":"page-errors","ordinal":2,"description":"handle page with missing MediaBox","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
@@ -2609,7 +2609,7 @@
 {"id":"split-pages 2","suite":"split-pages","category":"split-pages","ordinal":2,"description":"check out group 01-05","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"split-pages 3","suite":"split-pages","category":"split-pages","ordinal":3,"description":"check out group 06-10","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"split-pages 4","suite":"split-pages","category":"split-pages","ordinal":4,"description":"check out group 11-11","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"split-pages 5","suite":"split-pages","category":"split-pages","ordinal":5,"description":"no split-pages to stdout","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.5","replacement_ref":null}
+{"id":"split-pages 5","suite":"split-pages","category":"split-pages","ordinal":5,"description":"no split-pages to stdout","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"split-pages 6","suite":"split-pages","category":"split-pages","ordinal":6,"description":"split page with shared resources","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"split-pages 7","suite":"split-pages","category":"split-pages","ordinal":7,"description":"check output (01-04)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"split-pages 8","suite":"split-pages","category":"split-pages","ordinal":8,"description":"check output (05-08)","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
