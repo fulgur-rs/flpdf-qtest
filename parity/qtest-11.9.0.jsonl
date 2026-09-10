@@ -2801,7 +2801,7 @@
 {"id":"xref-errors 1","suite":"xref-errors","category":"xref-errors","ordinal":1,"description":"check obj0.pdf","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"xref-errors 2","suite":"xref-errors","category":"xref-errors","ordinal":2,"description":"dump bad xref","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"xref-errors 3","suite":"xref-errors","category":"xref-errors","ordinal":3,"description":"dump corrected bad xref","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
-{"id":"xref-errors 4","suite":"xref-errors","category":"xref-errors","ordinal":4,"description":"combine show and --pages","state":"failing","rationale":"Reached qtest comparison differs from qpdf 11.9.0","owner":"Mitsuru Hayasaka","bead":"flpdf-25kg.3","replacement_ref":null}
+{"id":"xref-errors 4","suite":"xref-errors","category":"xref-errors","ordinal":4,"description":"combine show and --pages","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"xref-errors 5","suite":"xref-errors","category":"xref-errors","ordinal":5,"description":"show number of pages","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"xref-errors 6","suite":"xref-errors","category":"xref-errors","ordinal":6,"description":"out of range in deleted object","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
 {"id":"xref-streams 1","suite":"xref-streams","category":"xref-streams","ordinal":1,"description":"xref with short size","state":"passing","rationale":null,"owner":null,"bead":null,"replacement_ref":null}
