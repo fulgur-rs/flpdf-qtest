@@ -357,6 +357,7 @@ qpdf-json:write JSON to pipeline
 signature-dictionary:checkout output (remove restrictions)
 specific-file:pages points to page
 stream-line-terminators:check output
+stream-line-terminators:odd terminators for stream keyword
 stream-replacements:add page contents
 stream-replacements:new streams
 stream-replacements:replace stream data
