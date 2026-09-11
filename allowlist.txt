@@ -43,6 +43,7 @@ linearize-pass1:linearize pass 1 file
 # groups until the allowlist can address subtest identity more precisely.
 copy-annotations:not keeping any fields
 copy-annotations:page splitting with fields
+merge-and-split:avoid respecification of password
 merge-and-split:force full page duplication
 merge-and-split:merge with . and implicit ranges
 merge-and-split:remove labels
