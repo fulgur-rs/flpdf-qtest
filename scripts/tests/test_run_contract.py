@@ -697,6 +697,35 @@ class ActionContractTest(unittest.TestCase):
             self.assertIn(artifact, upload["with"]["path"], artifact)
         self.assertEqual(upload["with"]["if-no-files-found"], "ignore")
 
+    def test_upload_paths_are_direct_children_of_the_survey_directory(
+        self,
+    ) -> None:
+        """upload-artifact roots the artifact at the least common ancestor of
+        the paths it is handed. Every path being a direct child of the survey
+        directory is what makes that ancestor the survey directory itself --
+        and so what keeps publish-metrics.sh finding its inputs flat at
+        artifacts/qtest-metrics.jsonl. A path one level deeper would move the
+        root up and rename every entry, which continue-on-error would then
+        swallow in silence."""
+        prefix = "${{ steps.paths.outputs.survey-dir }}/"
+        paths = [
+            line.strip()
+            for line in self._step("Upload qtest artifacts")["with"][
+                "path"
+            ].splitlines()
+            if line.strip()
+        ]
+        self.assertTrue(paths)
+        for path in paths:
+            self.assertTrue(path.startswith(prefix), path)
+            self.assertNotIn("/", path[len(prefix):], path)
+
+    def test_upload_survives_a_failed_survey(self) -> None:
+        """publish-metrics runs after a failed qtest job and downloads this
+        artifact, so the upload has to happen even when the survey did not
+        finish."""
+        self.assertIn("always()", self._step("Upload qtest artifacts")["if"])
+
     def test_upload_action_is_pinned_by_sha(self) -> None:
         uses = self._step("Upload qtest artifacts")["uses"]
         self.assertRegex(uses, r"^actions/upload-artifact@[0-9a-f]{40}\b")
