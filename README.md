@@ -48,6 +48,8 @@ flpdf-qtest/
 ├── shim/zlib-flate            #   (see "PATH shadowing" below)
 ├── scripts/run.sh             # build + run qtest + verify allowlist
 ├── scripts/verify-allowlist.py
+├── scripts/diff-survey.py     # judge a run against a caller's baseline
+├── action.yml                 # the reusable action (see below)
 ├── allowlist.txt              # tests required to pass (empty at Phase 1)
 ├── normalize/stderr-rules.sed # stderr prefix / wording normalization
 ├── survey/
@@ -131,6 +133,61 @@ Useful env knobs:
   `FLPDF_TEST_RENUMBER_BIN` is unset, build all fifteen binaries in that
   checkout, using the built path for each binary whose environment variable is
   unset.
+
+## Using this repository as an action
+
+`action.yml` runs the survey against an flpdf checkout and reports what moved
+since a baseline the caller owns. flpdf uses it to attribute a qtest
+regression to the pull request that caused it, rather than finding it later in
+the nightly sweep and probing commits to locate the culprit.
+
+```yaml
+- uses: fulgur-rs/flpdf-qtest@<sha>
+  id: qtest
+  with:
+    baseline: .github/qtest-baseline.jsonl
+```
+
+Everything the survey needs — the vendored qpdf corpus, the qtest driver, the
+PATH shims, the scripts — arrives with the action, so nothing is checked out a
+second time. The caller supplies `cargo`, `python3`, and `perl`, and owns its
+own toolchain pin and cargo cache.
+
+### Why a baseline and not the parity ledger
+
+`parity/qtest-11.9.0.jsonl` is this repository's data. It records a `failing`
+row as an error once the run passes it, because for this repository that means
+the ledger is stale — but for a consumer it means their change fixed
+something. It also moves constantly: promotions are most of this repository's
+commit traffic, so a consumer pinned to it would be bumping the pin or
+comparing against rows it has already fixed.
+
+A baseline is instead a flat list of the identities that currently do not
+pass, living beside the code that produces them. A change in behaviour and
+the baseline row that records it land in the same commit, so neither
+repository has to merge before the other.
+
+### Classification
+
+| Observation | Class |
+| --- | --- |
+| A non-passing identity the baseline does not account for | regression |
+| A baseline row the run now passes | improvement |
+| Subtest totals or per-suite counts moved | drift |
+| A non-passing identity the baseline lists | known |
+
+An improvement cannot fail a run. `fail-on` selects what does — `none` (the
+default) reports and stays green; `regression` and `any` gate.
+
+### Keeping a baseline current
+
+Every run regenerates one at the `baseline-out` path, carrying each surviving
+row's `bead` and `rationale` forward. Accepting a regression is copying that
+file over the committed one: the diff is the new row, and the issue tracking
+it goes in the row's `bead` field. A regression fixed in the pull request
+itself leaves no row at all.
+
+A first baseline comes from a run with no `baseline` input.
 
 ## Parity ledger maintenance
 
