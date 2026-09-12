@@ -668,3 +668,63 @@ class RunExecutionTest(unittest.TestCase):
         metrics = self.live / "qtest-metrics.jsonl"
         self.assertTrue(not metrics.exists() or metrics.read_text(encoding="utf-8") == "")
         self._assert_no_sentinel()
+
+
+    # --- the two switches the reusable action needs -------------------------
+    #
+    # Both default to today's behaviour, so the local loop and this
+    # repository's nightly are unaffected and the survey keeps one
+    # implementation.
+
+    def test_survey_dir_override_relocates_every_artifact(self) -> None:
+        """Run as a remote action, the repository root is under _actions/ and
+        outside the workspace -- the wrong place to write artifacts and collect
+        them from."""
+        elsewhere = self.repo / "relocated"
+
+        completed = self._run(
+            "valid-only",
+            full=True,
+            env_overrides={"QTEST_SURVEY_DIR": str(elsewhere)},
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        for name in ("harness.log", "qtest-results.xml", "qtest-summary.md"):
+            self.assertTrue((elsewhere / name).exists(), name)
+        self.assertEqual(
+            (self.live / "harness.log").read_text(encoding="utf-8"), _SENTINEL
+        )
+
+    def test_verify_disabled_skips_the_repository_data_gates(self) -> None:
+        """allowlist.txt and parity/qtest-11.9.0.jsonl are this repository's
+        data; an external caller judges against its own baseline instead."""
+        completed = self._run(
+            "valid-only", full=True, env_overrides={"QTEST_VERIFY": "0"}
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertTrue((self.live / "qtest-results.xml").exists())
+        self.assertTrue((self.live / "harness.log").exists())
+        for name in (
+            "qtest-summary.md",
+            "qtest-metrics.jsonl",
+            "qtest-parity-summary.md",
+        ):
+            self.assertFalse((self.live / name).exists(), name)
+
+    def test_verify_defaults_to_running_the_data_gates(self) -> None:
+        completed = self._run("valid-only", full=True)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertTrue((self.live / "qtest-summary.md").exists())
+        self.assertTrue((self.live / "qtest-parity-summary.md").exists())
+
+    def test_verify_disabled_still_fails_on_a_missing_results_xml(self) -> None:
+        """Skipping the data gates must not turn the runner into a step that
+        always succeeds."""
+        completed = self._run(
+            "missing-xml", full=True, env_overrides={"QTEST_VERIFY": "0"}
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("qtest results XML not found", completed.stderr)

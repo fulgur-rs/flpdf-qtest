@@ -496,8 +496,12 @@ class RunContractTest(unittest.TestCase):
 
     def test_driver_runs_from_the_live_artifact_directory(self) -> None:
         """qtest-driver hardcodes qtest.log / qtest-results.xml / TEST-qtest.xml
-        relative to cwd, so the runner must invoke it from survey/latest."""
-        self.assertIn('live_dir="${repo_root}/survey/latest"', self.script)
+        relative to cwd, so the runner must invoke it from the live directory
+        -- survey/latest unless the caller relocated it."""
+        self.assertIn(
+            'live_dir="${QTEST_SURVEY_DIR:-${repo_root}/survey/latest}"',
+            self.script,
+        )
         self.assertRegex(
             self.script,
             r'\(\s*cd "\$\{live_dir\}" &&[^)]*qtest-driver',

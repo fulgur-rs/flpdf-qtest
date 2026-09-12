@@ -90,6 +90,17 @@
 #                  binaries there and always
 #                  uses those freshly-built binaries.
 #   QTEST_FULL     When "1", run every *.test in vendor/qpdf-qtest/.
+#   QTEST_SURVEY_DIR
+#                  Directory the run's artifacts are written to.
+#                  Defaults to survey/latest under this repository. The
+#                  reusable action sets it because a remote action is
+#                  unpacked under _actions/, outside the workspace.
+#   QTEST_VERIFY   When "0", stop after the artifacts are produced and
+#                  skip verify-allowlist.py / verify-parity-manifest.py.
+#                  Those judge the run against allowlist.txt and the
+#                  parity ledger, which are this repository's data; an
+#                  external caller judges against its own baseline with
+#                  scripts/diff-survey.py instead. Defaults to "1".
 #
 # Outputs:
 #   harness.log         — full qtest-driver stdout+stderr captured by tee
@@ -115,7 +126,7 @@ cd "${repo_root}"
 # Clear every generated artifact before binary resolution or any other
 # preflight check. A failed invocation must never leave a previous success
 # looking current.
-live_dir="${repo_root}/survey/latest"
+live_dir="${QTEST_SURVEY_DIR:-${repo_root}/survey/latest}"
 mkdir -p "${live_dir}"
 log="${live_dir}/harness.log"
 qtest_log="${live_dir}/qtest.log"
@@ -495,6 +506,13 @@ else
 fi
 
 # --- verify against allowlist -----------------------------------------------
+#
+# Everything below judges the run against this repository's own data.
+# A caller that does not own allowlist.txt or the parity ledger stops here
+# with the artifacts in hand and compares them to its own baseline.
+if [[ "${QTEST_VERIFY:-1}" != "1" ]]; then
+    exit 0
+fi
 
 if [[ ${#stems[@]} -eq 0 ]]; then
     # No subtest lines will be present; emit a minimal summary directly.
