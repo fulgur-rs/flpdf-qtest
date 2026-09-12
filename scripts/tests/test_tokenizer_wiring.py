@@ -84,11 +84,8 @@ class TokenizerWiringTest(unittest.TestCase):
             f"shim/test_tokenizer: FLPDF_TEST_TOKENIZER_BIN={target} is not executable\n",
         )
 
-    def test_run_and_ci_declare_the_tokenizer_binary(self) -> None:
+    def test_run_declares_the_tokenizer_binary(self) -> None:
         run_source = (_ROOT / "scripts" / "run.sh").read_text(encoding="utf-8")
-        workflow = (_ROOT / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8"
-        )
 
         self.assertIn('if [[ -z "${FLPDF_TEST_TOKENIZER_BIN:-}" ]]', run_source)
         self.assertIn(
@@ -102,5 +99,3 @@ class TokenizerWiringTest(unittest.TestCase):
         self.assertIn("export FLPDF_TEST_TOKENIZER_BIN", run_source)
         self.assertIn('"${FLPDF_TEST_TOKENIZER_BIN}"', run_source)
         self.assertIn("--bin flpdf-test-tokenizer", run_source)
-        self.assertIn("FLPDF_TEST_TOKENIZER_BIN", workflow)
-        self.assertIn("--bin flpdf-test-tokenizer", workflow)

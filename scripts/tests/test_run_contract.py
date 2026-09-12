@@ -6,6 +6,8 @@ import re
 import unittest
 from pathlib import Path
 
+import yaml
+
 
 _ROOT = Path(__file__).parents[2]
 
@@ -68,13 +70,6 @@ class RunContractTest(unittest.TestCase):
             '"${parity_metrics}"', self.script[clear:binary_resolution]
         )
 
-    def test_ci_uploads_the_parity_metrics_artifact(self) -> None:
-        self.assertRegex(
-            self.workflow,
-            r'(?s)- name: Upload qtest artifacts.*?'
-            r'survey/latest/qtest-parity-metrics\.jsonl',
-        )
-
     def test_ci_prefers_a_matching_flpdf_pull_request_branch(self) -> None:
         self.assertIn('HEAD_REF: ${{ github.head_ref }}', self.workflow)
         self.assertIn('git ls-remote --exit-code --heads', self.workflow)
@@ -124,12 +119,6 @@ class RunContractTest(unittest.TestCase):
                 self.script,
                 rf"cargo build .*--bin {re.escape(binary)}",
             )
-            self.assertIn(f"--bin {binary}", self.workflow)
-            self.assertRegex(
-                self.workflow,
-                rf"{variable}:\s+\$\{{\{{ github\.workspace \}}\}}"
-                rf"/flpdf/target/release/{re.escape(binary)}",
-            )
 
     def test_runner_resolves_and_exports_qpdf_ctest(self) -> None:
         variable = "FLPDF_TEST_QPDF_CTEST_BIN"
@@ -148,12 +137,6 @@ class RunContractTest(unittest.TestCase):
         self.assertRegex(
             self.script,
             rf"cargo build .*--bin {re.escape(binary)}",
-        )
-        self.assertIn(f"--bin {binary}", self.workflow)
-        self.assertRegex(
-            self.workflow,
-            rf"{variable}:\s+\$\{{\{{ github\.workspace \}}\}}"
-            rf"/flpdf/target/release/{re.escape(binary)}",
         )
 
     def _parity_ledger_section(self) -> str:
@@ -538,18 +521,6 @@ class RunContractTest(unittest.TestCase):
             r'--timestamp "\$\(date -u \+%Y-%m-%dT%H:%M:%SZ\)"',
         )
 
-    def test_ci_uploads_both_structured_qtest_artifacts(self) -> None:
-        self.assertRegex(
-            self.workflow,
-            r'(?s)- name: Upload qtest artifacts.*?path: \|\s+'
-            r'survey/latest/harness\.log\s+survey/latest/qtest\.log\s+'
-            r'survey/latest/qtest-results\.xml\s+'
-            r'survey/latest/TEST-qtest\.xml\s+'
-            r'survey/latest/qtest-summary\.md\s+'
-            r'survey/latest/qtest-metrics\.jsonl\s+'
-            r'survey/latest/qtest-parity-summary\.md',
-        )
-
     def test_gitignore_lists_parity_summary_artifact(self) -> None:
         ignored = {
             line.strip()
@@ -611,20 +582,130 @@ class RunContractTest(unittest.TestCase):
             r"github\.event_name == 'schedule' \}\}$",
         )
 
-    def test_ci_full_survey_uploads_parity_summary(self) -> None:
-        qtest_step = self.workflow.split(
-            "- name: Run qtest acceptance suite", maxsplit=1
-        )[1].split("- name: Upload qtest artifacts", maxsplit=1)[0]
-        self.assertRegex(qtest_step, r'QTEST_FULL:\s+"1"')
+    def test_ci_keeps_its_job_shape_and_opts_into_the_ledger_gates(self) -> None:
+        """What is left on the workflow once the survey moved into the action:
+        this repository's own job shape, and the opt-in that keeps
+        allowlist.txt and the parity ledger judging its runs."""
         self.assertRegex(
             self.workflow,
             r'(?s)qtest:\s+runs-on: ubuntu-latest\s+timeout-minutes: 30',
         )
-        self.assertIn(
-            "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
-            self.workflow,
-        )
         self.assertRegex(
             self.workflow,
-            r'(?s)- name: Upload qtest artifacts.*?qtest-parity-summary\.md',
+            r'(?s)- name: Run qtest survey\s+uses: \./\s+with:'
+            r'.*?verify-ledger: "true"',
         )
+
+
+class ActionContractTest(unittest.TestCase):
+    """The reusable action's contract.
+
+    The action is what flpdf consumes, so the assertions that used to pin the
+    build and the run onto .github/workflows/ci.yml live here. ci.yml keeps
+    only what is this repository's own job shape.
+    """
+
+    def setUp(self) -> None:
+        self.path = _ROOT / "action.yml"
+        self.text = self.path.read_text(encoding="utf-8")
+        self.action = yaml.safe_load(self.text)
+        self.steps = self.action["runs"]["steps"]
+        self.workflow = (_ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+    def _step(self, name: str) -> dict:
+        for step in self.steps:
+            if step.get("name") == name:
+                return step
+        self.fail(f"action has no step named {name!r}")
+
+    def test_action_is_a_composite_action(self) -> None:
+        self.assertEqual(self.action["runs"]["using"], "composite")
+        self.assertIn("description", self.action)
+
+    def test_inputs_default_to_a_reporting_run(self) -> None:
+        """flpdf accepts regressions and files them; a check that failed the
+        build would invert that."""
+        inputs = self.action["inputs"]
+        self.assertEqual(inputs["fail-on"]["default"], "none")
+        self.assertEqual(inputs["verify-ledger"]["default"], "false")
+        self.assertEqual(inputs["baseline"]["default"], "")
+
+    def test_survey_runs_the_whole_corpus(self) -> None:
+        self.assertEqual(self._step("Run qtest survey")["env"]["QTEST_FULL"], "1")
+
+    def test_survey_runs_the_runner_from_the_action_checkout(self) -> None:
+        """The action's payload -- corpus, driver, shims, scripts -- is
+        unpacked at GITHUB_ACTION_PATH; nothing is checked out a second time."""
+        self.assertIn(
+            "${GITHUB_ACTION_PATH}/scripts/run.sh",
+            self._step("Run qtest survey")["run"],
+        )
+
+    def test_survey_delegates_the_build_through_flpdf_dir(self) -> None:
+        """run.sh owns the fifteen --bin targets. Naming them here too would
+        leave two lists to keep in step."""
+        self.assertIn("FLPDF_DIR", self._step("Run qtest survey")["env"])
+        for step in self.steps:
+            self.assertNotIn("cargo build", step.get("run", ""))
+
+    def test_the_repository_data_gates_are_opt_in(self) -> None:
+        """allowlist.txt and the parity ledger are this repository's data. An
+        external caller judges against its own baseline."""
+        env = self._step("Run qtest survey")["env"]
+        self.assertIn("QTEST_VERIFY", env)
+        self.assertIn("verify-ledger", env["QTEST_VERIFY"])
+
+    def test_baseline_is_always_regenerated(self) -> None:
+        """Accepting a regression is a one-line diff in the caller's baseline,
+        so the refreshed file has to come out of every run."""
+        self.assertIn("--write-baseline", self._step("Judge the survey")["run"])
+
+    def test_judgment_reports_through_the_action_outputs(self) -> None:
+        outputs = self.action["outputs"]
+        for name in (
+            "regressions",
+            "improvements",
+            "drift",
+            "regressions-json",
+            "baseline-out",
+            "survey-dir",
+            "results-xml",
+            "harness-log",
+        ):
+            self.assertIn(name, outputs, name)
+
+    def test_upload_covers_every_survey_artifact(self) -> None:
+        upload = self._step("Upload qtest artifacts")
+        # upload-artifact roots the artifact at the least common ancestor of
+        # these paths -- the survey directory -- so the artifact keeps the flat
+        # shape publish-metrics.sh expects at artifacts/qtest-metrics.jsonl.
+        for artifact in (
+            "harness.log",
+            "qtest.log",
+            "qtest-results.xml",
+            "TEST-qtest.xml",
+            "qtest-summary.md",
+            "qtest-metrics.jsonl",
+            "qtest-parity-summary.md",
+            "qtest-parity-metrics.jsonl",
+            "qtest-survey-diff.md",
+            "qtest-regressions.json",
+            "qtest-baseline.jsonl",
+        ):
+            self.assertIn(artifact, upload["with"]["path"], artifact)
+        self.assertEqual(upload["with"]["if-no-files-found"], "ignore")
+
+    def test_upload_action_is_pinned_by_sha(self) -> None:
+        uses = self._step("Upload qtest artifacts")["uses"]
+        self.assertRegex(uses, r"^actions/upload-artifact@[0-9a-f]{40}\b")
+
+    def test_workflow_consumes_the_action_rather_than_repeating_it(
+        self,
+    ) -> None:
+        """One implementation. Two would drift, and the contract tests could
+        not hold both honest."""
+        self.assertRegex(self.workflow, r"(?m)^\s+uses: \./\s*$")
+        self.assertNotIn("--bin ", self.workflow)
+        self.assertNotIn("FLPDF_CLI_BIN:", self.workflow)
