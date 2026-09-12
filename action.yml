@@ -1,0 +1,191 @@
+name: qtest survey
+description: >-
+  Run the qpdf qtest acceptance survey against an flpdf checkout and judge it
+  against a caller-supplied baseline. Reports regressions, improvements, and
+  drift; whether any of those fails the job is the caller's policy.
+
+# The action's payload -- the vendored qpdf corpus, the qtest driver, the PATH
+# shims, and the scripts -- is unpacked at GITHUB_ACTION_PATH when a workflow
+# names this repository in `uses:`. There are no submodules and no LFS objects,
+# so nothing has to be checked out a second time.
+#
+# The caller provides cargo, python3, and perl. flpdf pins its own toolchain
+# and manages its own cargo cache; installing either here would fight it.
+
+inputs:
+  flpdf-dir:
+    description: >-
+      Path to the flpdf checkout to build and test. Defaults to the caller's
+      workspace.
+    required: false
+    default: ""
+  baseline:
+    description: >-
+      Path to a baseline JSONL listing the identities that are known not to
+      pass. When empty the survey runs and reports, but is not judged.
+    required: false
+    default: ""
+  fail-on:
+    description: >-
+      Which findings fail the job: none, regression, or any -- where any means
+      regressions or drift. An improvement never fails a run under any of
+      them. The default reports and stays green.
+    required: false
+    default: none
+  verify-ledger:
+    description: >-
+      Also judge the run against allowlist.txt and parity/qtest-11.9.0.jsonl.
+      Those are this repository's own data, so this is only meaningful when
+      the action is used locally with `uses: ./`.
+    required: false
+    default: "false"
+  survey-dir:
+    description: >-
+      Directory the run's artifacts are written to. Defaults to a directory
+      under RUNNER_TEMP.
+    required: false
+    default: ""
+  upload-artifact:
+    description: Upload the survey artifacts.
+    required: false
+    default: "true"
+  artifact-name:
+    description: Name of the uploaded artifact.
+    required: false
+    default: qtest-results
+
+outputs:
+  regressions:
+    description: >-
+      Count of non-passing identities the baseline does not account for. Empty
+      when no baseline was supplied.
+    value: ${{ steps.judge.outputs.regressions }}
+  improvements:
+    description: Count of baseline rows the run now passes.
+    value: ${{ steps.judge.outputs.improvements }}
+  drift:
+    description: Whether subtest totals or per-suite counts moved.
+    value: ${{ steps.judge.outputs.drift }}
+  regressions-json:
+    description: Path to the regression list a follow-up issue is filed from.
+    value: ${{ steps.paths.outputs.survey-dir }}/qtest-regressions.json
+  baseline-out:
+    description: >-
+      Path to the regenerated baseline. Annotations on surviving rows are
+      carried forward, so accepting a regression is a one-line diff.
+    value: ${{ steps.paths.outputs.survey-dir }}/qtest-baseline.jsonl
+  survey-dir:
+    description: Directory holding every artifact this run produced.
+    value: ${{ steps.paths.outputs.survey-dir }}
+  results-xml:
+    description: qtest-driver's authoritative per-subtest results.
+    value: ${{ steps.paths.outputs.survey-dir }}/qtest-results.xml
+  harness-log:
+    description: Full qtest-driver stdout and stderr.
+    value: ${{ steps.paths.outputs.survey-dir }}/harness.log
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve paths
+      id: paths
+      shell: bash
+      env:
+        INPUT_FLPDF_DIR: ${{ inputs.flpdf-dir }}
+        INPUT_SURVEY_DIR: ${{ inputs.survey-dir }}
+      run: |
+        set -euo pipefail
+
+        # run.sh cds into FLPDF_DIR, so both paths have to survive that cd.
+        # The workspace fallback lives here rather than in the input default
+        # because an expression there is evaluated before this action's
+        # context exists.
+        flpdf_dir="$(cd "${INPUT_FLPDF_DIR:-${GITHUB_WORKSPACE}}" && pwd)"
+        survey_dir="${INPUT_SURVEY_DIR:-${RUNNER_TEMP}/qtest-survey}"
+        mkdir -p "${survey_dir}"
+        survey_dir="$(cd "${survey_dir}" && pwd)"
+
+        # Metadata, not a dependency: it labels the metrics record the ledger
+        # gates write. A caller whose checkout carries no git directory should
+        # not lose the survey over it.
+        flpdf_sha="$(git -C "${flpdf_dir}" rev-parse HEAD 2>/dev/null || true)"
+
+        {
+          echo "flpdf-dir=${flpdf_dir}"
+          echo "survey-dir=${survey_dir}"
+          echo "flpdf-sha=${flpdf_sha}"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Run qtest survey
+      shell: bash
+      env:
+        # Passing the checkout rather than fifteen FLPDF_*_BIN paths keeps the
+        # --bin list in run.sh alone. With a warm cargo cache the build it runs
+        # is a no-op; the cost is losing its separate step timing.
+        FLPDF_DIR: ${{ steps.paths.outputs.flpdf-dir }}
+        FLPDF_COMMIT: ${{ steps.paths.outputs.flpdf-sha }}
+        QTEST_FULL: "1"
+        QTEST_SURVEY_DIR: ${{ steps.paths.outputs.survey-dir }}
+        QTEST_VERIFY: ${{ inputs.verify-ledger == 'true' && '1' || '0' }}
+      run: |
+        set -euo pipefail
+
+        "${GITHUB_ACTION_PATH}/scripts/run.sh"
+
+    - name: Judge the survey
+      id: judge
+      shell: bash
+      env:
+        SURVEY_DIR: ${{ steps.paths.outputs.survey-dir }}
+        BASELINE: ${{ inputs.baseline }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        set -euo pipefail
+
+        # The regenerated baseline comes out of every run, with or without a
+        # comparison: a caller adopting the action needs a first one, and a
+        # caller accepting a regression needs the refreshed one.
+        args=(
+          "${SURVEY_DIR}/harness.log"
+          "${SURVEY_DIR}/qtest-results.xml"
+          --write-baseline "${SURVEY_DIR}/qtest-baseline.jsonl"
+          --github-output "$GITHUB_OUTPUT"
+        )
+        if [[ -n "${BASELINE}" ]]; then
+          args+=(
+            --baseline "${BASELINE}"
+            --fail-on "${FAIL_ON}"
+            --summary "${SURVEY_DIR}/qtest-survey-diff.md"
+            --regressions-json "${SURVEY_DIR}/qtest-regressions.json"
+          )
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+            args+=( --step-summary "$GITHUB_STEP_SUMMARY" )
+          fi
+        fi
+
+        # Annotations go to stdout, where the runner reads them as workflow
+        # commands, so a regression shows on the run without opening the
+        # Job Summary.
+        python3 "${GITHUB_ACTION_PATH}/scripts/diff-survey.py" "${args[@]}"
+
+    - name: Upload qtest artifacts
+      if: ${{ always() && inputs.upload-artifact == 'true' }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        # upload-artifact roots the artifact at the least common ancestor of
+        # these paths -- the survey directory -- so the artifact keeps the flat
+        # shape publish-metrics.sh expects at artifacts/qtest-metrics.jsonl.
+        path: |
+          ${{ steps.paths.outputs.survey-dir }}/harness.log
+          ${{ steps.paths.outputs.survey-dir }}/qtest.log
+          ${{ steps.paths.outputs.survey-dir }}/qtest-results.xml
+          ${{ steps.paths.outputs.survey-dir }}/TEST-qtest.xml
+          ${{ steps.paths.outputs.survey-dir }}/qtest-summary.md
+          ${{ steps.paths.outputs.survey-dir }}/qtest-metrics.jsonl
+          ${{ steps.paths.outputs.survey-dir }}/qtest-parity-summary.md
+          ${{ steps.paths.outputs.survey-dir }}/qtest-parity-metrics.jsonl
+          ${{ steps.paths.outputs.survey-dir }}/qtest-survey-diff.md
+          ${{ steps.paths.outputs.survey-dir }}/qtest-regressions.json
+          ${{ steps.paths.outputs.survey-dir }}/qtest-baseline.jsonl
+        if-no-files-found: ignore

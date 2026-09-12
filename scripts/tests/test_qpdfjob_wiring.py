@@ -20,12 +20,7 @@ class QpdfJobWiringTest(unittest.TestCase):
             source,
         )
 
-    def test_release_build_and_ci_export_the_qpdfjob_binary(self) -> None:
+    def test_release_build_exports_the_qpdfjob_binary(self) -> None:
         run_source = (_ROOT / "scripts" / "run.sh").read_text(encoding="utf-8")
-        workflow = (_ROOT / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8"
-        )
         self.assertIn("FLPDF_TEST_QPDFJOB_BIN", run_source)
         self.assertIn("--bin qpdfjob-ctest", run_source)
-        self.assertIn("FLPDF_TEST_QPDFJOB_BIN", workflow)
-        self.assertIn("--bin qpdfjob-ctest", workflow)

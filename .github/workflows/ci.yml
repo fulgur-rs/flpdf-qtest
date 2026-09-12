@@ -58,10 +58,6 @@ jobs:
           ref: ${{ steps.flpdf_ref.outputs.ref }}
           path: flpdf
 
-      - name: Resolve flpdf SHA
-        id: flpdf_sha
-        run: echo "sha=$(git -C flpdf rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
@@ -71,8 +67,9 @@ jobs:
           python-version: "3.x"
 
       - name: Install Python deps
-        # vl-convert-python is needed by plot-metrics.py and its unit test.
-        run: python3 -m pip install vl-convert-python
+        # vl-convert-python is needed by plot-metrics.py and its unit test;
+        # PyYAML by the action contract test.
+        run: python3 -m pip install vl-convert-python PyYAML
 
       - name: Cache cargo
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -89,54 +86,16 @@ jobs:
       - name: Unit tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
-      # Select by binary name, not package name: the binary names are what the
-      # harness consumes, while flpdf's crate layout is free to change.
-      - name: Build flpdf and qtest helper binaries
-        working-directory: flpdf
-        # qtest performs strict file comparisons against qpdf 11.9.0. Use
-        # flpdf's opt-in classic libz backend; production defaults remain
-        # pure-Rust miniz_oxide.
-        run: cargo build --release --features qpdf-zlib-compat --bin flpdf --bin flpdf-test-compare --bin flpdf-test-driver --bin qpdfjob-ctest --bin qpdf-ctest --bin flpdf-test-tokenizer --bin flpdf-test-pdf-doc-encoding --bin flpdf-test-pdf-unicode --bin flpdf-test-unicode-filenames --bin test_xref --bin test_parsedoffset --bin flpdf-test-large-file --bin pdf_from_scratch --bin test_many_nulls --bin test_renumber
-
-      - name: Run qtest acceptance suite
-        env:
-          FLPDF_CLI_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf
-          FLPDF_TEST_COMPARE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-compare
-          FLPDF_TEST_DRIVER_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-driver
-          FLPDF_TEST_TOKENIZER_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-tokenizer
-          FLPDF_TEST_QPDFJOB_BIN: ${{ github.workspace }}/flpdf/target/release/qpdfjob-ctest
-          FLPDF_TEST_QPDF_CTEST_BIN: ${{ github.workspace }}/flpdf/target/release/qpdf-ctest
-          FLPDF_TEST_PDF_DOC_ENCODING_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-pdf-doc-encoding
-          FLPDF_TEST_PDF_UNICODE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-pdf-unicode
-          FLPDF_TEST_UNICODE_FILENAMES_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-unicode-filenames
-          FLPDF_TEST_XREF_BIN: ${{ github.workspace }}/flpdf/target/release/test_xref
-          FLPDF_TEST_PARSED_OFFSET_BIN: ${{ github.workspace }}/flpdf/target/release/test_parsedoffset
-          FLPDF_TEST_LARGE_FILE_BIN: ${{ github.workspace }}/flpdf/target/release/flpdf-test-large-file
-          FLPDF_TEST_FROM_SCRATCH_BIN: ${{ github.workspace }}/flpdf/target/release/pdf_from_scratch
-          FLPDF_TEST_MANY_NULLS_BIN: ${{ github.workspace }}/flpdf/target/release/test_many_nulls
-          FLPDF_TEST_RENUMBER_BIN: ${{ github.workspace }}/flpdf/target/release/test_renumber
-          FLPDF_COMMIT: ${{ steps.flpdf_sha.outputs.sha }}
-          QTEST_FULL: "1"
-        run: ./scripts/run.sh
-
-      - name: Upload qtest artifacts
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      # One implementation of the survey, exercised here before flpdf
+      # consumes it. verify-ledger keeps this repository's own data gates --
+      # allowlist.txt and parity/qtest-11.9.0.jsonl -- which an external
+      # caller does not have and judges against its own baseline instead.
+      - name: Run qtest survey
+        uses: ./
         with:
-          name: qtest-results
-          # upload-artifact roots the artifact at the least common ancestor
-          # of these paths -- survey/latest -- so the artifact keeps the flat
-          # shape publish-metrics.sh expects at artifacts/qtest-metrics.jsonl.
-          path: |
-            survey/latest/harness.log
-            survey/latest/qtest.log
-            survey/latest/qtest-results.xml
-            survey/latest/TEST-qtest.xml
-            survey/latest/qtest-summary.md
-            survey/latest/qtest-metrics.jsonl
-            survey/latest/qtest-parity-summary.md
-            survey/latest/qtest-parity-metrics.jsonl
-          if-no-files-found: ignore
+          flpdf-dir: flpdf
+          survey-dir: survey/latest
+          verify-ledger: "true"
 
   # Nightly only: append the run's metrics to the metrics-data history branch
   # and re-render the trend chart. Isolated from the qtest job so that job keeps
