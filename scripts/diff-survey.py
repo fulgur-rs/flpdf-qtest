@@ -42,8 +42,9 @@ KIND = "qtest-baseline"
 
 #: Outcomes that mean flpdf did not do what the suite asked of it. An
 #: `expected-fail` is declared by the .test script rather than by flpdf, so its
-#: appearance is a corpus change and never counts as a regression — but it is
-#: still recorded in the baseline, so a later flip to `unexpected-pass` shows.
+#: appearance is a corpus change and never counts as a regression. It is still
+#: recorded in the baseline, and a later flip to `unexpected-pass` surfaces as
+#: drift: which side of an EXPECT_FAILURE a case lands on is flpdf's doing.
 _REGRESSION_OUTCOMES = (Outcome.FAIL, Outcome.UNEXPECTED_PASS)
 
 FAIL_ON = ("none", "regression", "any")
@@ -101,6 +102,33 @@ def _sort_key(entry: BaselineEntry | Result) -> tuple[str, int]:
 # --- baseline I/O ------------------------------------------------------------
 
 
+def _require(
+    path: Path,
+    number: int,
+    record: dict,
+    field: str,
+    kind: type,
+    *,
+    optional: bool = False,
+) -> None:
+    """Reject a field of the wrong JSON type. `bool` is excluded explicitly
+    because it passes `isinstance(..., int)`."""
+    if field not in record:
+        if optional:
+            return
+        raise BaselineError(f"{path}:{number}: entry is missing {field!r}")
+    value = record[field]
+    if optional and value is None:
+        return
+    if not isinstance(value, kind) or isinstance(value, bool) is not (
+        kind is bool
+    ):
+        raise BaselineError(
+            f"{path}:{number}: {field} must be {kind.__name__}, "
+            f"got {value!r}"
+        )
+
+
 def load_baseline(path: Path) -> Baseline:
     """Read a baseline file. The first non-blank line is the meta record."""
     try:
@@ -146,6 +174,15 @@ def load_baseline(path: Path) -> Baseline:
     for number, record in records[1:]:
         if not isinstance(record, dict):
             raise BaselineError(f"{path}:{number}: entry must be an object")
+        # This file is hand-edited: accepting a quoted ordinal would make the
+        # entry's key miss the run's, reporting a known failure as a
+        # regression, and would make sorting a file that mixes the two raise
+        # TypeError.
+        _require(path, number, record, "ordinal", int)
+        for field in ("id", "suite", "category", "description", "outcome"):
+            _require(path, number, record, field, str)
+        for field in ("bead", "rationale"):
+            _require(path, number, record, field, str, optional=True)
         try:
             entry = BaselineEntry(
                 id=record["id"],
@@ -242,7 +279,9 @@ def build_baseline(
 
 def diff_run(run: RunResults, baseline: Baseline) -> Diff:
     known = baseline.by_key
-    seen = {(result.category, result.ordinal) for result in run.results}
+    run_by_key = {
+        (result.category, result.ordinal): result for result in run.results
+    }
 
     regressions = tuple(
         result
@@ -274,8 +313,18 @@ def diff_run(run: RunResults, baseline: Baseline) -> Diff:
             drift.append(f"{suite}: {before} -> {after} subtests")
 
     for entry in sorted(baseline.entries, key=_sort_key):
-        if entry.key not in seen:
+        result = run_by_key.get(entry.key)
+        if result is None:
             drift.append(f"{entry.id}: no longer reported by the suite")
+        elif (
+            result.outcome is not Outcome.PASS
+            and result.outcome.value != entry.outcome
+        ):
+            # A PASS is already reported as an improvement; saying it twice
+            # would double-count the same move.
+            drift.append(
+                f"{entry.id}: outcome {entry.outcome} -> {result.outcome.value}"
+            )
 
     return Diff(
         regressions=regressions,
@@ -305,7 +354,9 @@ def exit_code(diff: Diff, *, fail_on: str) -> int:
     if fail_on == "regression":
         return 1 if diff.regressions else 0
     if fail_on == "any":
-        return 1 if (diff.regressions or diff.improvements or diff.drift) else 0
+        # Everything render_summary calls a FAIL. An improvement is not one,
+        # so no policy can make it fail a run.
+        return 1 if (diff.regressions or diff.drift) else 0
     raise ValueError(f"unknown --fail-on {fail_on!r}")
 
 

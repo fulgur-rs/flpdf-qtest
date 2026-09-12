@@ -174,10 +174,19 @@ repository has to merge before the other.
 | A non-passing identity the baseline does not account for | regression |
 | A baseline row the run now passes | improvement |
 | Subtest totals or per-suite counts moved | drift |
-| A non-passing identity the baseline lists | known |
+| A baseline row's recorded outcome moved | drift |
+| A non-passing identity the baseline lists unchanged | known |
 
-An improvement cannot fail a run. `fail-on` selects what does — `none` (the
-default) reports and stays green; `regression` and `any` gate.
+The second drift row covers a case the first cannot see: which side of an
+`EXPECT_FAILURE` a subtest lands on is flpdf's doing, so an `expected-fail`
+row turning into `unexpected-pass` is a behaviour change that leaves the
+totals untouched. Re-vendoring the corpus moves recorded outcomes the same
+way.
+
+An improvement cannot fail a run under any setting. `fail-on` selects what
+does — `none` (the default) reports and stays green, `regression` gates on
+regressions, and `any` gates on regressions or drift, which is the same
+condition the summary reports as `Verdict: FAIL`.
 
 ### Keeping a baseline current
 

@@ -116,9 +116,16 @@ row, and the bead identifier goes in it.
 | Non-passing identity absent from the baseline | regression | reported, emitted to JSON |
 | Passing identity present in the baseline | improvement | reported |
 | `total` or per-suite count changed | drift | reported with the suites that moved |
-| Non-passing identity present in the baseline | known | ignored |
+| A baseline row's recorded outcome changed | drift | reported as `before -> after` |
+| Non-passing identity present in the baseline, unchanged | known | ignored |
 
-An improvement can never fail the run, by construction rather than by policy.
+The second drift row exists because which side of an `EXPECT_FAILURE` a
+subtest lands on is flpdf's doing, not the .test script's: an `expected-fail`
+turning into `unexpected-pass` moves nothing the counts can see.
+
+An improvement can never fail the run, by construction rather than by policy —
+`fail-on: any` means regressions or drift, the same condition the summary
+reports as `Verdict: FAIL`.
 
 ## Action interface
 

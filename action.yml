@@ -27,8 +27,9 @@ inputs:
     default: ""
   fail-on:
     description: >-
-      Which classes fail the job: none, regression, or any. The default
-      reports and stays green.
+      Which findings fail the job: none, regression, or any -- where any means
+      regressions or drift. An improvement never fails a run under any of
+      them. The default reports and stays green.
     required: false
     default: none
   verify-ledger:

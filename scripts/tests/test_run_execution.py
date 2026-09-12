@@ -728,3 +728,15 @@ class RunExecutionTest(unittest.TestCase):
 
         self.assertEqual(completed.returncode, 1)
         self.assertIn("qtest results XML not found", completed.stderr)
+
+    def test_an_unrecognised_verify_value_is_an_error(self) -> None:
+        """Matching anything but "1" would fail open: a typo in QTEST_VERIFY
+        would silently drop both data gates and leave a green run that
+        verified nothing."""
+        completed = self._run(
+            "valid-only", full=True, env_overrides={"QTEST_VERIFY": "yes"}
+        )
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("QTEST_VERIFY must be 0 or 1", completed.stderr)
+        self.assertFalse((self.live / "qtest-summary.md").exists())

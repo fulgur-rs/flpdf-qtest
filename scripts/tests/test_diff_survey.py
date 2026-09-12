@@ -248,6 +248,54 @@ class DiffRunTest(unittest.TestCase):
 
         self.assertEqual(diff.regressions, ())
 
+    def test_a_changed_recorded_outcome_is_drift(self) -> None:
+        """EXPECT_FAILURE is declared by the .test script, but which side of it
+        a case lands on is flpdf's doing: an `expected-fail` row turning into
+        `unexpected-pass` means the behaviour moved. Re-vendoring the corpus
+        shifts recorded outcomes the same way."""
+        run = _run(
+            [_result("split-pages", 14, "check output", Outcome.UNEXPECTED_PASS)]
+        )
+        baseline = diff_survey.load_baseline(
+            _tmp(
+                _baseline_text(
+                    [
+                        _entry(
+                            id="split-pages 14",
+                            suite="split-pages",
+                            category="split-pages",
+                            ordinal=14,
+                            outcome="expected-fail",
+                        )
+                    ],
+                    total=1,
+                    suites={"split-pages": 1},
+                )
+            )
+        )
+
+        diff = diff_survey.diff_run(run, baseline)
+
+        self.assertEqual(diff.regressions, ())
+        self.assertEqual(diff.improvements, ())
+        self.assertEqual(
+            diff.drift,
+            ("split-pages 14: outcome expected-fail -> unexpected-pass",),
+        )
+
+    def test_a_baseline_row_that_passes_is_only_an_improvement(self) -> None:
+        """The outcome changed, but PASS is already reported as an
+        improvement; saying it twice would double-count."""
+        run = _run([_result("c-api", 1, "check output", Outcome.PASS)])
+        baseline = diff_survey.load_baseline(
+            _tmp(_baseline_text([_entry()], total=1, suites={"c-api": 1}))
+        )
+
+        diff = diff_survey.diff_run(run, baseline)
+
+        self.assertEqual(len(diff.improvements), 1)
+        self.assertEqual(diff.drift, ())
+
     def test_unexpected_pass_absent_from_the_baseline_is_a_regression(
         self,
     ) -> None:
@@ -278,6 +326,33 @@ class BaselineIoTest(unittest.TestCase):
         text = text.replace('"schema":1', '"schema":99')
         with self.assertRaises(diff_survey.BaselineError):
             diff_survey.load_baseline(_tmp(text))
+
+    def test_load_rejects_a_non_integer_ordinal(self) -> None:
+        """The baseline is hand-edited -- accepting a quoted ordinal here
+        makes its key miss the run's, reporting a known failure as a
+        regression, and makes sorting a mixed file raise TypeError."""
+        text = _baseline_text([_entry()], total=1, suites={"c-api": 1})
+        with self.assertRaises(diff_survey.BaselineError):
+            diff_survey.load_baseline(_tmp(text.replace('"ordinal":1', '"ordinal":"1"')))
+
+    def test_load_rejects_a_boolean_ordinal(self) -> None:
+        text = _baseline_text([_entry()], total=1, suites={"c-api": 1})
+        with self.assertRaises(diff_survey.BaselineError):
+            diff_survey.load_baseline(_tmp(text.replace('"ordinal":1', '"ordinal":true')))
+
+    def test_load_rejects_a_non_string_description(self) -> None:
+        text = _baseline_text([_entry()], total=1, suites={"c-api": 1})
+        with self.assertRaises(diff_survey.BaselineError):
+            diff_survey.load_baseline(
+                _tmp(text.replace('"description":"check output"', '"description":7'))
+            )
+
+    def test_load_rejects_a_non_string_bead(self) -> None:
+        text = _baseline_text([_entry()], total=1, suites={"c-api": 1})
+        with self.assertRaises(diff_survey.BaselineError):
+            diff_survey.load_baseline(
+                _tmp(text.replace('"bead":null', '"bead":7'))
+            )
 
     def test_render_round_trips_through_load(self) -> None:
         original = diff_survey.load_baseline(
@@ -448,6 +523,17 @@ class MainTest(unittest.TestCase):
             drift=("c-api: 3 -> 2",),
         )
         self.assertEqual(diff_survey.exit_code(diff, fail_on="regression"), 0)
+
+    def test_fail_on_any_still_ignores_improvements(self) -> None:
+        """`any` means everything the summary calls a FAIL. An improvement is
+        not one, so no policy can make it fail a run."""
+        diff = diff_survey.Diff(
+            regressions=(),
+            improvements=(diff_survey.BaselineEntry(**_entry()),),
+            drift=(),
+        )
+        self.assertEqual(diff_survey.exit_code(diff, fail_on="any"), 0)
+        self.assertIn("**Verdict: OK**", diff_survey.render_summary(diff))
 
     def test_fail_on_any_reports_drift(self) -> None:
         diff = diff_survey.Diff(
