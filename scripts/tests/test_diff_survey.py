@@ -354,6 +354,34 @@ class BaselineIoTest(unittest.TestCase):
                 _tmp(text.replace('"bead":null', '"bead":7'))
             )
 
+    def test_load_rejects_an_unknown_outcome(self) -> None:
+        """An identity present in the baseline is excluded from regressions
+        whatever its recorded outcome says, so a typo here downgrades a real
+        regression to drift -- and drift does not gate under
+        `--fail-on regression`."""
+        text = _baseline_text([_entry()], total=1, suites={"c-api": 1})
+        with self.assertRaises(diff_survey.BaselineError):
+            diff_survey.load_baseline(
+                _tmp(text.replace('"outcome":"fail"', '"outcome":"faill"'))
+            )
+
+    def test_load_rejects_a_passing_outcome(self) -> None:
+        """The baseline lists what does not pass. A `pass` row would suppress
+        the regression it claims to record."""
+        text = _baseline_text([_entry()], total=1, suites={"c-api": 1})
+        with self.assertRaises(diff_survey.BaselineError):
+            diff_survey.load_baseline(
+                _tmp(text.replace('"outcome":"fail"', '"outcome":"pass"'))
+            )
+
+    def test_load_accepts_every_non_passing_outcome(self) -> None:
+        text = _baseline_text([_entry()], total=1, suites={"c-api": 1})
+        for outcome in ("fail", "expected-fail", "unexpected-pass"):
+            baseline = diff_survey.load_baseline(
+                _tmp(text.replace('"outcome":"fail"', f'"outcome":"{outcome}"'))
+            )
+            self.assertEqual(baseline.entries[0].outcome, outcome)
+
     def test_render_round_trips_through_load(self) -> None:
         original = diff_survey.load_baseline(
             _tmp(

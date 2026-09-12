@@ -181,6 +181,21 @@ def load_baseline(path: Path) -> Baseline:
         _require(path, number, record, "ordinal", int)
         for field in ("id", "suite", "category", "description", "outcome"):
             _require(path, number, record, field, str)
+        # An identity the baseline lists is excluded from regressions whatever
+        # its recorded outcome says, so an outcome this file cannot actually
+        # hold would downgrade a real regression to drift -- which does not
+        # gate under --fail-on regression.
+        try:
+            outcome = Outcome(record["outcome"])
+        except ValueError as exc:
+            raise BaselineError(
+                f"{path}:{number}: unknown outcome {record['outcome']!r}"
+            ) from exc
+        if outcome is Outcome.PASS:
+            raise BaselineError(
+                f"{path}:{number}: the baseline lists what does not pass, "
+                f"so {Outcome.PASS.value!r} cannot be recorded"
+            )
         for field in ("bead", "rationale"):
             _require(path, number, record, field, str, optional=True)
         try:
